@@ -11,7 +11,7 @@ router = APIRouter(prefix="/institutions", tags=["Institution Onboarding"])
 
 
 @router.get("", response_model=list[InstitutionResponse])
-async def list_active_institutions(current_user: dict = Depends(get_current_user)):
+async def list_active_institutions():
     db = get_database()
     docs = await db.institutions.find({"status": "active"}).sort("name", 1).to_list(None)
     return [InstitutionResponse(id=str(d["_id"]), name=d["name"], slug=d["slug"], email_domains=d.get("email_domains", []), status=d.get("status", "active")) for d in docs]
