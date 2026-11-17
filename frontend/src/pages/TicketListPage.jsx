@@ -21,6 +21,7 @@ export default function TicketListPage() {
     status: searchParams.get('status') || '',
     priority: searchParams.get('priority') || '',
     category: searchParams.get('category') || '',
+    problem_domain: searchParams.get('problem_domain') || '',
     sort_by: searchParams.get('sort_by') || 'newest',
     assigned_to_me: searchParams.get('assigned_to_me') === 'true'
   });
@@ -39,6 +40,7 @@ export default function TicketListPage() {
       if (filters.status) params.status = filters.status;
       if (filters.priority) params.priority = filters.priority;
       if (filters.category) params.category = filters.category;
+      if (filters.problem_domain) params.problem_domain = filters.problem_domain;
       if (filters.sort_by) params.sort_by = filters.sort_by;
       if (filters.assigned_to_me) params.assigned_to_me = true;
 
@@ -77,7 +79,7 @@ export default function TicketListPage() {
 
       {/* Filter and Search Bar */}
       <div className="card" style={{ marginBottom: '1.5rem', padding: '1.25rem' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr', gap: '0.75rem', alignItems: 'center' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '2fr repeat(5, minmax(130px, 1fr))', gap: '0.75rem', alignItems: 'center' }}>
           {/* Keyword Search */}
           <div style={{ position: 'relative' }}>
             <input
@@ -118,6 +120,23 @@ export default function TicketListPage() {
             <option value="high">High (8h)</option>
             <option value="medium">Medium (24h)</option>
             <option value="low">Low (72h)</option>
+          </select>
+
+          {/* Problem domain filter */}
+          <select
+            className="form-control"
+            aria-label="Filter by problem domain"
+            value={filters.problem_domain}
+            onChange={(e) => handleFilterChange('problem_domain', e.target.value)}
+          >
+            <option value="">All problem types</option>
+            <option value="technical">Technical</option>
+            <option value="academic">Academic</option>
+            <option value="administrative">Administrative</option>
+            <option value="facilities">Facilities</option>
+            <option value="personal_support">Student support</option>
+            <option value="community">Community</option>
+            <option value="other">Other</option>
           </select>
 
           {/* Category Filter */}
@@ -162,6 +181,7 @@ export default function TicketListPage() {
                 <tr>
                   <th>Ticket ID</th>
                   <th>Title & Description</th>
+                  <th>Problem Type</th>
                   <th>Category</th>
                   <th>Priority</th>
                   <th>Status</th>
@@ -185,6 +205,7 @@ export default function TicketListPage() {
                         Reported by {t.created_by?.name} ({t.created_by?.role})
                       </div>
                     </td>
+                    <td style={{ fontSize: '0.8125rem', textTransform: 'capitalize' }}>{(t.problem_domain || 'technical').replaceAll('_', ' ')}</td>
                     <td style={{ fontSize: '0.8125rem' }}>{t.category}</td>
                     <td>
                       <PriorityBadge priority={t.priority} />
