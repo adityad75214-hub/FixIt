@@ -5,7 +5,7 @@ from pymongo.errors import DuplicateKeyError
 from app.core.database import get_database
 from app.core.security import get_current_user, require_roles, get_password_hash
 from app.core.audit import record_audit_log
-from app.models.institution import InstitutionCreate, InstitutionResponse, InstitutionAdminCreate
+from app.models.institution import InstitutionCreate, InstitutionResponse, InstitutionAdminCreate, InstitutionUpdate
 
 router = APIRouter(prefix="/institutions", tags=["Institution Onboarding"])
 
@@ -54,3 +54,18 @@ async def create_institution_admin(institution_id: str, payload: InstitutionAdmi
         raise HTTPException(status_code=409, detail="An account with this email already exists.") from None
     await record_audit_log(action="INSTITUTION_ADMIN_CREATED", resource_type="user", resource_id=user_id, actor=current_user, details={"institution_id": institution_id, "email": email})
     return {"id": user_id, "email": email, "name": payload.name, "role": "admin", "institution_id": institution_id}
+
+
+
+@router.put("/{institution_id}", response_model=InstitutionResponse)
+async def update_institution(institution_id: str, payload: InstitutionUpdate, current_user: dict = Depends(require_roles("platform_admin"))):
+    db = get_database()
+    update = {key: value for key, value in payload.model_dump().items() if value is not None}
+    if not update:
+        raise HTTPException(status_code=400, detail="Provide at least one institution field to update.")
+    result = await db.institutions.update_one({"_id": institution_id}, {"$set": update})
+    if not result.matched_count:
+        raise HTTPException(status_code=404, detail="Institution not found.")
+    institution = await db.institutions.find_one({"_id": institution_id})
+    await record_audit_log(action="INSTITUTION_UPDATED", resource_type="institution", resource_id=institution_id, actor=current_user, details={"updated_fields": sorted(update.keys())})
+    return InstitutionResponse(id=institution_id, name=institution["name"], slug=institution["slug"], email_domains=institution.get("email_domains", []), status=institution.get("status", "active"))
