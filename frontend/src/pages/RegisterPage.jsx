@@ -112,7 +112,7 @@ export default function RegisterPage() {
                   <option value="">Select your college</option>
                   {institutions.map((institution) => <option key={institution.id} value={institution.slug}>{institution.name}</option>)}
                 </select>
-                {selectedInstitution && <small style={{ color: 'var(--text-muted)' }}>Use an email address belonging to {selectedInstitution.name}.</small>}
+                {selectedInstitution && <small style={{ color: 'var(--text-muted)' }}>Approved {formData.role} domains: {(formData.role === 'student' ? selectedInstitution.student_email_domains : selectedInstitution.faculty_email_domains)?.join(', ') || selectedInstitution.email_domains?.join(', ') || 'Not configured yet'}.</small>}
               </div>
 
               <div className="form-group">
