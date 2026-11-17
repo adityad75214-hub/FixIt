@@ -266,6 +266,10 @@ async def login(credentials: UserLogin, request: Request, response: Response):
             status_code=status.HTTP_403_FORBIDDEN,
             detail="This account has been deactivated. Please contact campus IT administration."
         )
+    if user.get("role") != "platform_admin":
+        institution = await db.institutions.find_one({"_id": user.get("institution_id") or "INST-DEFAULT"})
+        if not institution or institution.get("status", "active") != "active":
+            raise HTTPException(status_code=403, detail="This institution workspace is suspended or unavailable.")
 
     # Clear this account’s failed attempts, but do not let a successful login reset
     # the shared IP failure counter and thereby bypass protection for other accounts.
@@ -346,6 +350,11 @@ async def refresh_access_token(request: Request, response: Response):
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="User account no longer active."
         )
+    if user.get("role") != "platform_admin":
+        institution = await db.institutions.find_one({"_id": user.get("institution_id") or "INST-DEFAULT"})
+        if not institution or institution.get("status", "active") != "active":
+            clear_refresh_cookie(response)
+            raise HTTPException(status_code=403, detail="This institution workspace is suspended or unavailable.")
 
     # Rotate refresh token after the old token has been consumed.
     new_raw, new_hash, new_exp = create_refresh_token()
