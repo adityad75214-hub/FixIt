@@ -17,6 +17,13 @@ async def list_active_institutions():
     return [InstitutionResponse(id=str(d["_id"]), name=d["name"], slug=d["slug"], email_domains=d.get("email_domains", []), status=d.get("status", "active")) for d in docs]
 
 
+@router.get("/manage", response_model=list[InstitutionResponse])
+async def list_institutions_for_platform(current_user: dict = Depends(require_roles("platform_admin"))):
+    db = get_database()
+    docs = await db.institutions.find({}).sort("name", 1).to_list(None)
+    return [InstitutionResponse(id=str(d["_id"]), name=d["name"], slug=d["slug"], email_domains=d.get("email_domains", []), status=d.get("status", "active")) for d in docs]
+
+
 @router.post("", response_model=InstitutionResponse, status_code=status.HTTP_201_CREATED)
 async def create_institution(payload: InstitutionCreate, current_user: dict = Depends(require_roles("platform_admin"))):
     db = get_database()
