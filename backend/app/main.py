@@ -126,7 +126,8 @@ app.include_router(reports_router, prefix=settings.API_V1_STR)
 app.include_router(audit_logs_router, prefix=settings.API_V1_STR)
 app.include_router(incidents_router, prefix=settings.API_V1_STR)
 app.include_router(feature_requests_router, prefix=settings.API_V1_STR)
-app.include_router(institutions_router, prefix=settings.API_V1_STR)\napp.include_router(registration_router, prefix=settings.API_V1_STR)
+app.include_router(institutions_router, prefix=settings.API_V1_STR)
+app.include_router(registration_router, prefix=settings.API_V1_STR)
 
 if __name__ == "__main__":
     import uvicorn
