@@ -84,13 +84,13 @@ export default function LandingPage() {
             borderRadius: '9999px',
             marginBottom: '1.25rem'
           }}>
-            Campus Technical Support & Facilities
+            One Platform for Campus Support
           </span>
           <h1 style={{ fontSize: '2.75rem', fontWeight: '800', lineHeight: '1.2', marginBottom: '1.25rem', letterSpacing: '-0.03em' }}>
             Campus Support & Issue Resolution Platform
           </h1>
           <p style={{ fontSize: '1.125rem', color: '#E7EDE5', lineHeight: '1.6', marginBottom: '2.5rem', maxWidth: '700px', margin: '0 auto 2.5rem auto' }}>
-            Empowering students, faculty, and IT teams with centralized ticket tracking, automated staff routing, transparent SLA resolution, and campus-wide technical transparency.
+            Helping students, faculty, and campus teams resolve technical, academic, administrative, facilities, and community requests through one transparent support platform.
           </p>
 
           <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem', flexWrap: 'wrap' }}>
