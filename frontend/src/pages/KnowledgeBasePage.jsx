@@ -17,7 +17,7 @@ export default function KnowledgeBasePage() {
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [newArticle, setNewArticle] = useState({
     title: '',
-    category: 'Network and Wi-Fi',
+    category: '',
     content: '',
     tags: ''
   });
@@ -41,7 +41,14 @@ export default function KnowledgeBasePage() {
   };
 
   useEffect(() => {
-    categoryService.getCategories().then(res => setCategories(res.data || [])).catch(console.error);
+    categoryService.getCategories().then(res => {
+      const available = res.data || [];
+      setCategories(available);
+      setNewArticle(prev => ({
+        ...prev,
+        category: available.some(item => item.name === prev.category) ? prev.category : (available[0]?.name || '')
+      }));
+    }).catch(console.error);
   }, []);
 
   useEffect(() => {
@@ -72,7 +79,7 @@ export default function KnowledgeBasePage() {
         tags: newArticle.tags.split(',').map(t => t.trim()).filter(Boolean)
       });
       setCreateModalOpen(false);
-      setNewArticle({ title: '', category: 'Network and Wi-Fi', content: '', tags: '' });
+      setNewArticle({ title: '', category: categories[0]?.name || '', content: '', tags: '' });
       fetchArticles();
     } catch (err) {
       alert(err.response?.data?.detail || "Failed to create article");
@@ -226,6 +233,7 @@ export default function KnowledgeBasePage() {
               value={newArticle.category}
               onChange={(e) => setNewArticle({ ...newArticle, category: e.target.value })}
             >
+              <option value="">Select a category</option>
               {categories.map((c) => (
                 <option key={c.id} value={c.name}>{c.name}</option>
               ))}
@@ -257,7 +265,7 @@ export default function KnowledgeBasePage() {
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1rem' }}>
             <button type="button" className="btn btn-secondary" onClick={() => setCreateModalOpen(false)}>Cancel</button>
-            <button type="submit" className="btn btn-navy">Publish Article</button>
+            <button type="submit" className="btn btn-navy" disabled={!newArticle.category}>Publish Article</button>
           </div>
         </form>
       </Modal>
