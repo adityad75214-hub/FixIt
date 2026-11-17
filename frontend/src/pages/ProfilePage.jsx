@@ -11,6 +11,8 @@ export default function ProfilePage() {
   const { theme, setTheme } = useTheme();
   const [preferences, setPreferences] = useState({ email_notifications: true, in_app_notifications: true, language: 'en' });
   const [preferencesMsg, setPreferencesMsg] = useState('');
+  const [avatarPreview, setAvatarPreview] = useState('');
+  const [avatarUploadMsg, setAvatarUploadMsg] = useState('');
 
   const [profileData, setProfileData] = useState({
     name: user?.name || '',
@@ -19,6 +21,35 @@ export default function ProfilePage() {
     avatar_url: user?.avatar_url || ''
   });
   const [profileMsg, setProfileMsg] = useState('');
+
+  useEffect(() => {
+    let objectUrl;
+    const avatar = profileData.avatar_url || '';
+    const uploadMatch = avatar.match(/^\\/api\\/uploads\\/([a-f0-9]{32})$/);
+    if (uploadMatch) {
+      authService.downloadUpload(uploadMatch[1]).then(res => {
+        objectUrl = URL.createObjectURL(res.data);
+        setAvatarPreview(objectUrl);
+      }).catch(() => setAvatarUploadMsg('Could not load saved profile image.'));
+    } else {
+      setAvatarPreview(avatar);
+    }
+    return () => { if (objectUrl) URL.revokeObjectURL(objectUrl); };
+  }, [profileData.avatar_url]);
+
+  const handleAvatarUpload = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    setAvatarUploadMsg('');
+    try {
+      const result = await authService.uploadFile(file, 'profile');
+      setProfileData(prev => ({ ...prev, avatar_url: result.data.url }));
+      setAvatarUploadMsg('Image uploaded. Save your profile to apply it.');
+    } catch (err) {
+      setAvatarUploadMsg(err.response?.data?.detail || 'Image upload failed.');
+    }
+  };
 
   useEffect(() => {
     authService.getPreferences().then(res => setPreferences(res.data)).catch(() => {});
@@ -102,7 +133,7 @@ export default function ProfilePage() {
           fontSize: '1.75rem',
           fontWeight: '700'
         }}>
-          {profileData.avatar_url ? <img src={profileData.avatar_url} alt="Profile" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} /> : user?.name?.charAt(0).toUpperCase()}
+          {(avatarPreview || profileData.avatar_url) ? <img src={avatarPreview || profileData.avatar_url} alt="Profile" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} /> : user?.name?.charAt(0).toUpperCase()}
         </div>
         <div>
           <h2 style={{ fontSize: '1.25rem', fontWeight: '700', color: 'var(--text-main)' }}>{user?.name}</h2>
@@ -139,9 +170,10 @@ export default function ProfilePage() {
           </div>
 
           <div className="form-group">
-            <label className="form-label">Profile image URL (HTTPS)</label>
-            <input type="url" className="form-control" placeholder="https://example.com/profile.jpg" value={profileData.avatar_url} onChange={(e) => setProfileData({ ...profileData, avatar_url: e.target.value })} />
-            <small style={{ color: 'var(--text-muted)' }}>Use a public HTTPS image URL. Direct image upload can be added with managed file storage.</small>
+            <label className="form-label">Profile picture</label>
+            <input type="file" className="form-control" accept="image/jpeg,image/png,image/webp,image/gif" onChange={handleAvatarUpload} />
+            <small style={{ color: 'var(--text-muted)' }}>Upload JPG, PNG, WEBP or GIF. Maximum size: 5 MB.</small>
+            {avatarUploadMsg && <p role="status" style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: '0.4rem' }}>{avatarUploadMsg}</p>}
           </div>
           <div className="grid-2">
             <div className="form-group">
