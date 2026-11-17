@@ -66,6 +66,19 @@ export default function InstitutionAdminInvitationsPage() {
     } finally { setSaving(false); }
   };
 
+  const transferPrimary = async (admin) => {
+    if (!window.confirm(`Transfer Primary College Admin ownership to ${admin.name}? You will become a College Admin.`)) return;
+    setSaving(true); setError(''); setNotice('');
+    try {
+      const response = await institutionService.makePrimaryAdministrator(institutionId, admin.id);
+      setNotice(response.data.message || 'Primary ownership transferred.');
+      window.location.reload();
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Primary ownership could not be transferred.');
+      setSaving(false);
+    }
+  };
+
   const toggleAdmin = async (admin) => {
     const next = !admin.is_active;
     if (!window.confirm(`${next ? 'Reactivate' : 'Deactivate'} ${admin.name}?`)) return;
