@@ -61,7 +61,7 @@ async def create_institution(payload: InstitutionCreate, current_user: dict = De
 
 
 @router.post("/{institution_id}/admins/invitations", status_code=status.HTTP_202_ACCEPTED)
-async def invite_institution_admin(institution_id: str, payload: InstitutionAdminInvite, current_user: dict = Depends(require_roles("platform_admin"))):
+async def invite_institution_admin(institution_id: str, payload: InstitutionAdminInvite, current_user: dict = Depends(require_roles("platform_admin", "admin"))):
     """Invite a college administrator; the recipient chooses their password after accepting."""
     from app.core.config import settings
     from app.services.notification_service import _send_email
@@ -70,14 +70,19 @@ async def invite_institution_admin(institution_id: str, payload: InstitutionAdmi
         raise HTTPException(status_code=503, detail="Administrator invitations require SMTP_HOST, sender email, and APP_BASE_URL configuration.")
 
     db = get_database()
+    # Platform admins can invite the first admin for any college. College admins
+    # can invite additional admins only inside their own institution.
+    if current_user.get("role") != "platform_admin" and current_user.get("institution_id") != institution_id:
+        raise HTTPException(status_code=403, detail="You can invite administrators only for your own institution.")
+
     institution = await db.institutions.find_one({"_id": institution_id, "status": "active"})
     if not institution:
         raise HTTPException(status_code=404, detail="Active institution not found.")
 
     email = str(payload.email).strip().lower()
     domain = email.rsplit("@", 1)[-1]
-    allowed_domains = institution.get("email_domains", [])
-    if allowed_domains and domain not in allowed_domains:
+    allowed_domains = [str(item).lower().lstrip("@") for item in institution.get("email_domains", [])]
+    if not allowed_domains or domain not in allowed_domains:
         raise HTTPException(status_code=400, detail="The administrator email must use an approved institution domain.")
     if await db.users.find_one({"email": email}):
         raise HTTPException(status_code=409, detail="An account with this email already exists.")
@@ -142,6 +147,9 @@ async def accept_institution_admin_invitation(payload: InstitutionAdminInviteAcc
         "department": "Administration",
         "specialization": [],
         "is_active": True,
+        "email_verified": True,
+        "email_verified_at": now.isoformat(),
+        "approval_method": "institution_admin_invitation",
         "token_version": 0,
         "created_at": now.isoformat(),
     }
