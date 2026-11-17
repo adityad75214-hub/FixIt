@@ -9,6 +9,7 @@ from fastapi.responses import StreamingResponse
 
 from app.core.database import get_database
 from app.core.security import get_current_user
+from app.core.tenancy import institution_id_for, scoped_filter
 
 router = APIRouter(prefix="/uploads", tags=["File Uploads"])
 
@@ -48,7 +49,7 @@ def _can_access_profile_upload(document: dict, user: dict) -> bool:
 
 
 async def _ticket_for_user(db, ticket_id: str, user: dict, *, for_upload: bool):
-    ticket = await db.tickets.find_one({"$or": [{"_id": ticket_id}, {"ticket_id": ticket_id}]})
+    ticket = await db.tickets.find_one(scoped_filter(user, {"$or": [{"_id": ticket_id}, {"ticket_id": ticket_id}]}))
     if not ticket:
         raise HTTPException(status_code=404, detail="Ticket not found")
     role = user.get("role")
@@ -101,6 +102,7 @@ async def upload_file(
     safe_name = re.sub(r"[^A-Za-z0-9._-]", "_", original_name)[:120] or "upload"
     document = {
         "_id": upload_id,
+        "institution_id": institution_id_for(current_user),
         "user_id": current_user["id"],
         "purpose": purpose,
         "ticket_id": ticket.get("ticket_id") if ticket else None,
@@ -126,7 +128,7 @@ async def download_file(
     current_user: dict = Depends(get_current_user),
 ):
     db = get_database()
-    document = await db.uploads.find_one({"_id": upload_id})
+    document = await db.uploads.find_one(scoped_filter(current_user, {"_id": upload_id}))
     if not document:
         raise HTTPException(status_code=404, detail="File not found")
 
