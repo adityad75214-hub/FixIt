@@ -1,4 +1,4 @@
-from app.api.uploads import _detect_file_type
+from app.api.uploads import _can_access_profile_upload, _detect_file_type
 from app.models.comment import CommentCreate
 
 
@@ -32,3 +32,12 @@ def test_comment_rejects_malformed_internal_upload_reference():
 
     with pytest.raises(ValidationError):
         CommentCreate(content="Invalid", attachments=["/api/uploads/not-a-valid-id"])
+
+
+
+def test_profile_upload_is_private_to_owner_and_admin():
+    document = {"user_id": "user-1", "purpose": "profile"}
+    assert _can_access_profile_upload(document, {"id": "user-1", "role": "student"})
+    assert _can_access_profile_upload(document, {"id": "admin-1", "role": "admin"})
+    assert not _can_access_profile_upload(document, {"id": "user-2", "role": "student"})
+    assert not _can_access_profile_upload(document, {"id": "staff-1", "role": "staff"})
