@@ -177,10 +177,13 @@ def suggest_priority(category: str, affected_users: int = 1, is_classroom: bool 
         return TicketPriority.MEDIUM
     return TicketPriority.LOW
 
-async def calculate_sla_deadline_from_db(priority: str) -> Tuple[datetime, int]:
+async def calculate_sla_deadline_from_db(priority: str, institution_id: Optional[str] = None) -> Tuple[datetime, int]:
     """Calculates SLA deadline using the active admin policy from the database."""
     db = get_database()
-    policy = await db.sla_policies.find_one({"priority": priority.lower()})
+    policy_query = {"priority": priority.lower()}
+    if institution_id:
+        policy_query["institution_id"] = institution_id
+    policy = await db.sla_policies.find_one(policy_query)
 
     defaults = {
         TicketPriority.CRITICAL.value: 2,
