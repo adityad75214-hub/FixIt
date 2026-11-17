@@ -25,6 +25,7 @@ from app.api.reports import router as reports_router
 from app.api.audit_logs import router as audit_logs_router
 from app.api.incidents import router as incidents_router
 from app.api.feature_requests import router as feature_requests_router
+from app.api.institutions import router as institutions_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -120,6 +121,7 @@ app.include_router(reports_router, prefix=settings.API_V1_STR)
 app.include_router(audit_logs_router, prefix=settings.API_V1_STR)
 app.include_router(incidents_router, prefix=settings.API_V1_STR)
 app.include_router(feature_requests_router, prefix=settings.API_V1_STR)
+app.include_router(institutions_router, prefix=settings.API_V1_STR)
 
 if __name__ == "__main__":
     import uvicorn
