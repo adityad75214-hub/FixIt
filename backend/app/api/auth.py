@@ -349,6 +349,7 @@ async def refresh_access_token(request: Request, response: Response):
         phone=user.get("phone"),
         identifier=user.get("identifier"),
         specialization=user.get("specialization") or [],
+        avatar_url=user.get("avatar_url"),
         is_active=user.get("is_active", True),
         created_at=user.get("created_at", datetime.now(timezone.utc).isoformat())
     )
