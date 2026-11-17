@@ -66,9 +66,6 @@ async def invite_institution_admin(institution_id: str, payload: InstitutionAdmi
     from app.core.config import settings
     from app.services.notification_service import _send_email
 
-    if not settings.SMTP_HOST or not settings.APP_BASE_URL or not (settings.SMTP_FROM_EMAIL or settings.SMTP_USERNAME):
-        raise HTTPException(status_code=503, detail="Administrator invitations require SMTP_HOST, sender email, and APP_BASE_URL configuration.")
-
     db = get_database()
     # Platform admins provision the first Primary College Admin. Thereafter,
     # only the Primary College Admin can issue direct invitations.
@@ -81,6 +78,9 @@ async def invite_institution_admin(institution_id: str, payload: InstitutionAdmi
     institution = await db.institutions.find_one({"_id": institution_id, "status": "active"})
     if not institution:
         raise HTTPException(status_code=404, detail="Active institution not found.")
+
+    if not settings.SMTP_HOST or not settings.APP_BASE_URL or not (settings.SMTP_FROM_EMAIL or settings.SMTP_USERNAME):
+        raise HTTPException(status_code=503, detail="Administrator invitations require SMTP_HOST, sender email, and APP_BASE_URL configuration.")
 
     email = str(payload.email).strip().lower()
     domain = email.rsplit("@", 1)[-1]
