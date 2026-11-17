@@ -1,11 +1,13 @@
 import uuid
-from datetime import datetime, timezone
+import asyncio
+from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, Depends, HTTPException, status
 from pymongo.errors import DuplicateKeyError
 from app.core.database import get_database
 from app.core.security import get_current_user, require_roles, get_password_hash
 from app.core.audit import record_audit_log
-from app.models.institution import InstitutionCreate, InstitutionResponse, InstitutionAdminCreate, InstitutionUpdate
+from app.models.institution import InstitutionCreate, InstitutionResponse, InstitutionAdminInvite, InstitutionAdminInviteAccept, InstitutionUpdate
+from app.core.security import hash_token
 
 router = APIRouter(prefix="/institutions", tags=["Institution Onboarding"])
 
@@ -58,30 +60,105 @@ async def create_institution(payload: InstitutionCreate, current_user: dict = De
     return InstitutionResponse(id=institution_id, name=payload.name, slug=payload.slug, email_domains=payload.email_domains, status="active")
 
 
-@router.post("/{institution_id}/admins", status_code=status.HTTP_201_CREATED)
-async def create_institution_admin(institution_id: str, payload: InstitutionAdminCreate, current_user: dict = Depends(require_roles("platform_admin"))):
+@router.post("/{institution_id}/admins/invitations", status_code=status.HTTP_202_ACCEPTED)
+async def invite_institution_admin(institution_id: str, payload: InstitutionAdminInvite, current_user: dict = Depends(require_roles("platform_admin"))):
+    """Invite a college administrator; the recipient chooses their password after accepting."""
+    from app.core.config import settings
+    from app.services.notification_service import _send_email
+
+    if not settings.SMTP_HOST or not settings.APP_BASE_URL or not (settings.SMTP_FROM_EMAIL or settings.SMTP_USERNAME):
+        raise HTTPException(status_code=503, detail="Administrator invitations require SMTP_HOST, sender email, and APP_BASE_URL configuration.")
+
     db = get_database()
     institution = await db.institutions.find_one({"_id": institution_id, "status": "active"})
     if not institution:
         raise HTTPException(status_code=404, detail="Active institution not found.")
-    email = payload.email.strip().lower()
-    domain = email.rsplit("@", 1)[-1] if "@" in email else ""
+
+    email = str(payload.email).strip().lower()
+    domain = email.rsplit("@", 1)[-1]
     allowed_domains = institution.get("email_domains", [])
     if allowed_domains and domain not in allowed_domains:
         raise HTTPException(status_code=400, detail="The administrator email must use an approved institution domain.")
+    if await db.users.find_one({"email": email}):
+        raise HTTPException(status_code=409, detail="An account with this email already exists.")
+    if await db.admin_invitations.find_one({"email": email, "institution_id": institution_id, "used_at": None, "expires_at": {"$gt": datetime.now(timezone.utc)}}):
+        raise HTTPException(status_code=409, detail="A valid invitation already exists for this email.")
+
+    raw_token = __import__("secrets").token_urlsafe(48)
+    now = datetime.now(timezone.utc)
+    invitation_id = f"INV-{uuid.uuid4().hex[:12].upper()}"
+    invite = {
+        "_id": invitation_id,
+        "email": email,
+        "name": payload.name,
+        "role": "admin",
+        "institution_id": institution_id,
+        "token_hash": hash_token(raw_token),
+        "created_at": now,
+        "expires_at": now + timedelta(hours=48),
+        "created_by": current_user["id"],
+        "used_at": None,
+    }
+    await db.admin_invitations.insert_one(invite)
+    invite_url = settings.APP_BASE_URL.rstrip("/") + "/accept-invitation?token=" + raw_token
+    body = (
+        f"Hello {payload.name},\n\nYou have been invited to administer {institution['name']} on FixIt. "
+        f"This invitation expires in 48 hours and can only be used once.\n\n"
+        f"Accept your invitation: {invite_url}\n\n"
+        "If you were not expecting this invitation, you can ignore this email."
+    )
+    try:
+        await asyncio.to_thread(_send_email, email, f"FixIt administrator invitation — {institution['name']}", body)
+    except Exception:
+        await db.admin_invitations.delete_one({"_id": invitation_id})
+        raise HTTPException(status_code=502, detail="The invitation email could not be sent. No administrator account was created.") from None
+
+    await record_audit_log(action="INSTITUTION_ADMIN_INVITED", resource_type="institution", resource_id=institution_id, actor=current_user, details={"email": email, "invitation_id": invitation_id})
+    return {"message": "Administrator invitation sent.", "email": email, "expires_in_hours": 48}
+
+
+@router.post("/admin-invitations/accept", status_code=status.HTTP_201_CREATED)
+async def accept_institution_admin_invitation(payload: InstitutionAdminInviteAccept):
+    """Accept a single-use invitation and set the administrator's own password."""
+    db = get_database()
+    now = datetime.now(timezone.utc)
+    invite = await db.admin_invitations.find_one({"token_hash": hash_token(payload.token), "used_at": None, "expires_at": {"$gt": now}})
+    if not invite:
+        raise HTTPException(status_code=400, detail="This invitation is invalid, expired, or already used.")
+    institution = await db.institutions.find_one({"_id": invite["institution_id"], "status": "active"})
+    if not institution:
+        raise HTTPException(status_code=400, detail="The institution is unavailable. Contact FixIt support.")
+    if await db.users.find_one({"email": invite["email"]}):
+        raise HTTPException(status_code=409, detail="An account with this email already exists.")
+
     user_id = f"USR-{uuid.uuid4().hex[:10].upper()}"
     user = {
-        "_id": user_id, "email": email, "password_hash": get_password_hash(payload.password),
-        "name": payload.name, "role": "admin", "institution_id": institution_id,
-        "department": "Administration", "specialization": [], "is_active": True,
-        "token_version": 0, "created_at": datetime.now(timezone.utc).isoformat()
+        "_id": user_id,
+        "email": invite["email"],
+        "password_hash": get_password_hash(payload.password),
+        "name": invite["name"],
+        "role": "admin",
+        "institution_id": invite["institution_id"],
+        "department": "Administration",
+        "specialization": [],
+        "is_active": True,
+        "token_version": 0,
+        "created_at": now.isoformat(),
     }
     try:
         await db.users.insert_one(user)
     except DuplicateKeyError:
         raise HTTPException(status_code=409, detail="An account with this email already exists.") from None
-    await record_audit_log(action="INSTITUTION_ADMIN_CREATED", resource_type="user", resource_id=user_id, actor=current_user, details={"institution_id": institution_id, "email": email})
-    return {"id": user_id, "email": email, "name": payload.name, "role": "admin", "institution_id": institution_id}
+
+    consumed = await db.admin_invitations.update_one(
+        {"_id": invite["_id"], "used_at": None, "expires_at": {"$gt": now}},
+        {"$set": {"used_at": now, "accepted_by": user_id}},
+    )
+    if consumed.modified_count != 1:
+        await db.users.delete_one({"_id": user_id})
+        raise HTTPException(status_code=400, detail="This invitation has already been used.")
+    await record_audit_log(action="INSTITUTION_ADMIN_INVITATION_ACCEPTED", resource_type="user", resource_id=user_id, actor={"id": user_id, "email": user["email"], "name": user["name"], "role": "admin", "institution_id": user["institution_id"]}, details={"institution_id": user["institution_id"]})
+    return {"message": "Administrator account created. You can now sign in.", "user": {"id": user_id, "email": user["email"], "name": user["name"], "role": "admin", "institution_id": user["institution_id"]}}
 
 
 
