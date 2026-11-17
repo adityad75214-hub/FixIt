@@ -2,14 +2,10 @@ import uuid
 import re
 import secrets
 import asyncio
-import secrets
-import asyncio
-from datetime import datetime, timezone
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
 from pymongo import ReturnDocument
 from pymongo.errors import DuplicateKeyError
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
-from pydantic import BaseModel, EmailStr, Field
 from pydantic import BaseModel, EmailStr, Field
 from app.core.database import get_database
 from app.core.config import settings
@@ -559,8 +555,8 @@ async def request_password_reset(payload: PasswordResetRequest, request: Request
     from app.services.notification_service import _send_email
     reset_url = f"{settings.APP_BASE_URL.rstrip('/')}/reset-password?token={raw_token}"
     body = (
-        f"Hello {user.get('name', 'there')},\\n\\n"
-        f"Use this link to reset your FixIt password (valid for 15 minutes):\\n{reset_url}\\n\\n"
+        f"Hello {user.get('name', 'there')},\n\n"
+        f"Use this link to reset your FixIt password (valid for 15 minutes):\n{reset_url}\n\n"
         "If you did not request this, ignore this email."
     )
     try:
