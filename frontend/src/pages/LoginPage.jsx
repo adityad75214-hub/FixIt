@@ -4,9 +4,9 @@ import { Wrench, Lock, Mail, AlertCircle, ArrowRight } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 const DEMO_MODE_ENABLED = import.meta.env.DEV && import.meta.env.VITE_DEMO_MODE_ENABLED !== 'false';
-const PUBLIC_REGISTRATION_ENABLED = import.meta.env.DEV && import.meta.env.VITE_PUBLIC_REGISTRATION_ENABLED !== 'false';
+const PUBLIC_REGISTRATION_ENABLED = import.meta.env.VITE_PUBLIC_REGISTRATION_ENABLED !== 'false';
 
-export default function LoginPage() {
+export default function LoginPage() {\n  const params = new URLSearchParams(window.location.search);\n  const audience = params.get('audience');\n  const requestedRole = params.get('role');\n  const loginHeading = audience === 'staff' ? 'Staff & Administrator Sign In' : requestedRole === 'faculty' ? 'Faculty Sign In' : requestedRole === 'student' ? 'Student Sign In' : 'Sign in to your account';
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -62,9 +62,9 @@ export default function LoginPage() {
             </div>
             <span style={{ fontSize: '1.75rem', fontWeight: '800', color: 'var(--primary-navy)', letterSpacing: '-0.02em' }}>FixIt</span>
           </Link>
-          <h2 style={{ fontSize: '1.25rem', fontWeight: '700', color: 'var(--text-main)' }}>Sign in to your account</h2>
+          <h2 style={{ fontSize: '1.25rem', fontWeight: '700', color: 'var(--text-main)' }}>{loginHeading}</h2>
           <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
-            Campus Support & Issue Resolution Platform
+            {audience === 'staff' ? 'Use the account provided by your college administrator.' : 'Campus Support & Issue Resolution Platform'}
           </p>
         </div>
 
