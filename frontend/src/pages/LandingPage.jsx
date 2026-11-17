@@ -49,7 +49,7 @@ export default function LandingPage() {
           </div>
           <div>
             <span style={{ fontSize: '1.35rem', fontWeight: '800', color: 'var(--primary-navy)' }}>FixIt</span>
-            <span style={{ fontSize: '0.65rem', display: 'block', color: 'var(--text-muted)', fontWeight: '600' }}>COLLEGE IT HELPDESK</span>
+            <span style={{ fontSize: '0.65rem', display: 'block', color: 'var(--text-muted)', fontWeight: '600' }}>CAMPUS SUPPORT PLATFORM</span>
           </div>
         </div>
 
@@ -87,7 +87,7 @@ export default function LandingPage() {
             Campus Technical Support & Facilities
           </span>
           <h1 style={{ fontSize: '2.75rem', fontWeight: '800', lineHeight: '1.2', marginBottom: '1.25rem', letterSpacing: '-0.03em' }}>
-            College IT Helpdesk & Campus Issue Management System
+            Campus Support & Issue Resolution Platform
           </h1>
           <p style={{ fontSize: '1.125rem', color: '#E7EDE5', lineHeight: '1.6', marginBottom: '2.5rem', maxWidth: '700px', margin: '0 auto 2.5rem auto' }}>
             Empowering students, faculty, and IT teams with centralized ticket tracking, automated staff routing, transparent SLA resolution, and campus-wide technical transparency.
@@ -163,7 +163,7 @@ export default function LandingPage() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
             <div>
               <h2 style={{ fontSize: '1.75rem', fontWeight: '700', color: 'var(--primary-navy)' }}>Self-Service Knowledge Base</h2>
-              <p style={{ color: 'var(--text-muted)', fontSize: '0.925rem' }}>Find instant answers to common campus technical issues before logging a ticket.</p>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.925rem' }}>Find instant answers to common campus support questions before logging a ticket.</p>
             </div>
             <Link to="/login" className="btn btn-secondary">
               Browse All Articles
@@ -198,8 +198,8 @@ export default function LandingPage() {
       <footer style={{ marginTop: 'auto', backgroundColor: 'var(--text-main)', color: 'var(--text-subtle)', padding: '2.5rem 2rem', fontSize: '0.875rem' }}>
         <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
           <div>
-            <span style={{ color: '#FFFFFF', fontWeight: '700', fontSize: '1.1rem' }}>FixIt Helpdesk</span>
-            <p style={{ marginTop: '0.25rem', fontSize: '0.8125rem' }}>Official Campus IT Infrastructure & Issue Management Platform.</p>
+            <span style={{ color: '#FFFFFF', fontWeight: '700', fontSize: '1.1rem' }}>FixIt Campus Support</span>
+            <p style={{ marginTop: '0.25rem', fontSize: '0.8125rem' }}>Campus-wide service requests and issue resolution platform.</p>
           </div>
           <div>
             &copy; 2026 Campus IT Department. All rights reserved.
