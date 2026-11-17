@@ -91,7 +91,6 @@ def test_faculty_can_register_after_college_email_otp(client, monkeypatch):
         "institution_slug": slug,
         "name": "Verified Faculty",
         "email": email,
-        "password": "SecurePassphrase123!",
         "role": "faculty",
         "department": "Computer Science",
         "identifier": "EMP-OTP-001",
@@ -99,7 +98,7 @@ def test_faculty_can_register_after_college_email_otp(client, monkeypatch):
     assert requested.status_code == 202, requested.text
     code = re.search(r"verification code .* is: (\d{6})", sent["body"], re.IGNORECASE).group(1)
 
-    verified = client.post("/api/auth/registration/verify-code", json={"email": email, "code": code})
+    verified = client.post("/api/auth/registration/verify-code", json={"email": email, "code": code, "password": "SecurePassphrase123!"})
     assert verified.status_code == 201, verified.text
     assert verified.json()["user"]["role"] == "faculty"
 
