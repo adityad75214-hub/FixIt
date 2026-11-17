@@ -56,7 +56,7 @@ describe('Language preferences', () => {
       te: 'నోటిఫికేషన్‌లు',
       ml: 'അറിയിപ്പുകൾ',
       mr: 'सूचना',
-      bn: 'বিজ্ঞপ্তి'
+      bn: 'বিজ্ঞপ্তি'
     };
     for (const [code, label] of Object.entries(expected)) {
       fireEvent.click(screen.getByRole('button', { name: code }));
