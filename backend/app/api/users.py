@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from app.core.database import get_database
 from app.core.security import get_current_user, require_roles, get_password_hash
 from app.core.audit import record_audit_log
+from app.core.tenancy import institution_id_for, scoped_filter, tenant_document
 from app.models.user import UserResponse, UserCreate, UserUpdate, UserRole
 
 router = APIRouter(prefix="/users", tags=["User Management"])
@@ -22,7 +23,7 @@ async def list_users(
     current_user: dict = Depends(require_roles("admin"))
 ):
     db = get_database()
-    query = {}
+    query = {"institution_id": institution_id_for(current_user)}
     if role:
         query["role"] = role
     if department:
@@ -44,6 +45,7 @@ async def list_users(
         active_tickets = 0
         if u.get("role") == "staff":
             active_tickets = await db.tickets.count_documents({
+                "institution_id": institution_id_for(current_user),
                 "assigned_to.id": u_id,
                 "status": {"$in": ["assigned", "in_progress", "on_hold"]}
             })
@@ -58,7 +60,8 @@ async def list_users(
             specialization=u.get("specialization") or [],
             is_active=u.get("is_active", True),
             created_at=u.get("created_at", ""),
-            active_tickets_count=active_tickets
+            active_tickets_count=active_tickets,
+            institution_id=u.get("institution_id") or institution_id_for(current_user)
         ))
     return response
 
@@ -66,11 +69,12 @@ async def list_users(
 async def list_staff_members(current_user: dict = Depends(require_roles("admin"))):
     """Returns active IT staff members and workload to administrators."""
     db = get_database()
-    staff_users = await db.users.find({"role": "staff", "is_active": True}).to_list(None)
+    staff_users = await db.users.find(scoped_filter(current_user, {"role": "staff", "is_active": True})).to_list(None)
     response = []
     for u in staff_users:
         u_id = str(u["_id"])
         active_tickets = await db.tickets.count_documents({
+            "institution_id": institution_id_for(current_user),
             "assigned_to.id": u_id,
             "status": {"$in": ["assigned", "in_progress", "on_hold"]}
         })
@@ -85,7 +89,8 @@ async def list_staff_members(current_user: dict = Depends(require_roles("admin")
             specialization=u.get("specialization") or [],
             is_active=u.get("is_active", True),
             created_at=u.get("created_at", ""),
-            active_tickets_count=active_tickets
+            active_tickets_count=active_tickets,
+        institution_id=u.get("institution_id") or institution_id_for(current_user)
         ))
     return response
 
@@ -111,6 +116,7 @@ async def create_user_by_admin(
         "identifier": user_in.identifier,
         "specialization": user_in.specialization or [],
         "is_active": True,
+        "institution_id": institution_id_for(current_user),
         "created_at": datetime.now(timezone.utc).isoformat()
     }
     try:
@@ -136,7 +142,8 @@ async def create_user_by_admin(
         identifier=new_user["identifier"],
         specialization=new_user["specialization"],
         is_active=True,
-        created_at=new_user["created_at"]
+        created_at=new_user["created_at"],
+        institution_id=new_user["institution_id"]
     )
 
 @router.put("/{user_id}", response_model=UserResponse)
@@ -146,7 +153,7 @@ async def update_user_by_admin(
     current_user: dict = Depends(require_roles("admin"))
 ):
     db = get_database()
-    user = await db.users.find_one({"_id": user_id})
+    user = await db.users.find_one(scoped_filter(current_user, {"_id": user_id}))
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
@@ -176,7 +183,7 @@ async def update_user_by_admin(
         update_dict["role"] = update_data.role.value
 
     if update_dict:
-        await db.users.update_one({"_id": user_id}, {"$set": update_dict})
+        await db.users.update_one(scoped_filter(current_user, {"_id": user_id}), {"$set": update_dict})
         user = await db.users.find_one({"_id": user_id})
 
     await record_audit_log(
@@ -197,5 +204,6 @@ async def update_user_by_admin(
         identifier=user.get("identifier"),
         specialization=user.get("specialization") or [],
         is_active=user.get("is_active", True),
-        created_at=user.get("created_at", "")
+        created_at=user.get("created_at", ""),
+        institution_id=user.get("institution_id") or institution_id_for(current_user)
     )
