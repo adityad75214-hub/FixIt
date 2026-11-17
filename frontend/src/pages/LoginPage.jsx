@@ -7,7 +7,10 @@ const DEMO_MODE_ENABLED = import.meta.env.DEV && import.meta.env.VITE_DEMO_MODE_
 const PUBLIC_REGISTRATION_ENABLED = import.meta.env.VITE_PUBLIC_REGISTRATION_ENABLED !== 'false';
 
 export default function LoginPage() {
-  const params = new URLSearchParams(window.location.search);\n  const audience = params.get('audience');\n  const requestedRole = params.get('role');\n  const loginHeading = audience === 'staff' ? 'Staff & Administrator Sign In' : requestedRole === 'faculty' ? 'Faculty Sign In' : requestedRole === 'student' ? 'Student Sign In' : 'Sign in to your account';
+  const params = new URLSearchParams(window.location.search);
+  const audience = params.get('audience');
+  const requestedRole = params.get('role');
+  const loginHeading = audience === 'staff' ? 'Staff & Administrator Sign In' : requestedRole === 'faculty' ? 'Faculty Sign In' : requestedRole === 'student' ? 'Student Sign In' : 'Sign in to your account';
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -155,7 +158,7 @@ export default function LoginPage() {
 
             <div className="form-group">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.375rem' }}>
-                <label className="form-label" style={{ marginBottom: 0 }}>Password</label>
+                <label className="form-label" style={{ marginBottom: 0 }}>Password</label><Link to="/forgot-password" style={{ fontSize: "0.8rem", color: "var(--brand-blue)", fontWeight: 600 }}>Forgot password?</Link>
               </div>
               <div style={{ position: 'relative' }}>
                 <input
@@ -185,7 +188,7 @@ export default function LoginPage() {
             <div style={{ textAlign: 'center', marginTop: '1.5rem', paddingTop: '1.25rem', borderTop: '1px solid var(--border-light)', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
               Don't have an account?{' '}
               <Link to="/register" style={{ color: 'var(--brand-blue)', fontWeight: '600' }}>
-                Register as Student
+                Register as Student or Faculty
               </Link>
             </div>
           )}
