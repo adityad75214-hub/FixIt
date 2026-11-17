@@ -10,6 +10,9 @@ router = APIRouter(prefix="/notifications", tags=["Notifications"])
 async def get_my_notifications(current_user: dict = Depends(get_current_user)):
     db = get_database()
     user_id = current_user["id"]
+    preferences = await db.user_preferences.find_one({"user_id": user_id}) or {}
+    if not preferences.get("in_app_notifications", True):
+        return {"unread_count": 0, "notifications": []}
 
     docs = await db.notifications.find({"user_id": user_id}).sort("created_at", -1).limit(50).to_list(50)
     unread_count = await db.notifications.count_documents({"user_id": user_id, "is_read": False})
