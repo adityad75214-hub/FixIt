@@ -241,9 +241,10 @@ async def update_administrator_status(
 async def make_primary_administrator(
     institution_id: str,
     user_id: str,
-    current_user: dict = Depends(require_roles("platform_admin")),
+    current_user: dict = Depends(require_roles("platform_admin", "admin")),
 ):
     db = get_database()
+    await _assert_primary(current_user, institution_id)
     await _institution_or_404(db, institution_id)
     target = await db.users.find_one({"_id": user_id, "institution_id": institution_id, "role": "admin", "is_active": True})
     if not target:
