@@ -46,6 +46,7 @@ def test_college_admin_request_requires_primary_approval(client, admin_token, mo
     )
     assert response.status_code == 202, response.text
     request_id = response.json()["request_id"]
+    assert db.notifications.find_one({"user_id": "USR-TEST-ADMIN", "title": "Administrator approval requested"})
 
     denied = client.get(
         f"/api/institutions/{institution_id}/admin-requests",
@@ -60,6 +61,7 @@ def test_college_admin_request_requires_primary_approval(client, admin_token, mo
     assert approved.status_code == 200, approved.text
     assert sent["recipient"].endswith("@gov-test.edu")
     assert db.admin_requests.find_one({"_id": request_id})["status"] == "approved"
+    assert db.notifications.find_one({"user_id": requester_id, "title": "Administrator request approved"})
     invitation = db.admin_invitations.find_one({"email": sent["recipient"]})
     assert invitation["admin_level"] == "college"
 
