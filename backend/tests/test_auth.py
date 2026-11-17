@@ -231,3 +231,15 @@ def test_public_student_registration_checks_selected_college_email_domain(client
     })
     assert accepted.status_code == 201, accepted.text
     assert accepted.json()["user"]["institution_id"] == institution_id
+
+
+def test_prevent_public_platform_admin_registration(client):
+    res = client.post("/api/auth/register", json={
+        "email": "rogue.platform@fixit.example",
+        "password": "SecurePassword123!",
+        "name": "Rogue Platform Admin",
+        "role": "platform_admin"
+    })
+    assert res.status_code == 403
+    assert "Only student accounts" in res.json()["detail"]
+
