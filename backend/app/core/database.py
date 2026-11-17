@@ -33,10 +33,13 @@ class MockAsyncCursor:
         return self
 
     async def __anext__(self):
-        try:
-            return next(self._iter)
-        except StopIteration:
+        # StopIteration must not escape an async coroutine (PEP 479 converts it
+        # to RuntimeError). Use a sentinel so async-for ends normally.
+        sentinel = object()
+        document = next(self._iter, sentinel)
+        if document is sentinel:
             raise StopAsyncIteration
+        return document
 
 class MockAsyncCollection:
     def __init__(self, sync_col):
