@@ -1,9 +1,11 @@
 import React from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 
 export default function ProtectedRoute({ allowedRoles = [] }) {
   const { user, loading, isAuthenticated } = useAuth();
+  const { t } = useLanguage();
 
   if (loading) {
     return (
@@ -25,7 +27,7 @@ export default function ProtectedRoute({ allowedRoles = [] }) {
             margin: '0 auto 1rem auto'
           }} />
           <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Loading FixIt Helpdesk...</p>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>{t('Loading campus support')}</p>
         </div>
       </div>
     );
