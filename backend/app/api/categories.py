@@ -101,7 +101,7 @@ async def update_category(
 @router.get("/locations", response_model=List[CampusLocationResponse])
 async def list_campus_locations(current_user: dict = Depends(get_current_user)):
     db = get_database()
-    docs = await db.campus_locations.find(scoped_filter(current_user, {"is_active": True})).to_list(None)
+    docs = await db.campus_locations.find(scoped_filter(current_user, {"is_active": True, "building": {"$exists": True}})).to_list(None)
     return [
         CampusLocationResponse(
             id=str(d["_id"]),
