@@ -1,5 +1,9 @@
 import api from './client';
 
+export const institutionService = {
+  list: () => api.get("/institutions"),
+};
+
 export const authService = {
   login: (data) => api.post('/auth/login', data),
   register: (data) => api.post('/auth/register', data),
