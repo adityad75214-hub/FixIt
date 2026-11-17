@@ -150,7 +150,8 @@ async def create_article(
     article_id = f"KB-{uuid.uuid4().hex[:8].upper()}"
 
     doc = {
-        "_id": article_id,\n        "institution_id": institution_id_for(current_user),
+        "_id": article_id,
+        "institution_id": institution_id_for(current_user),
         "title": article_in.title,
         "category": article_in.category,
         "content": article_in.content,
