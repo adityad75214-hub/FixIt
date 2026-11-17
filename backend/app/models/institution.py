@@ -24,6 +24,18 @@ class InstitutionCreate(BaseModel):
         return sorted(set(result))
 
 
+    @field_validator("student_identifier_pattern", "faculty_identifier_pattern")
+    @classmethod
+    def validate_identifier_patterns(cls, value):
+        if value is None or value == "":
+            return None
+        try:
+            re.compile(value)
+        except re.error as exc:
+            raise ValueError("Enter a valid identifier regular expression.") from exc
+        return value
+
+
 class InstitutionResponse(BaseModel):
     id: str
     name: str
@@ -70,20 +82,3 @@ class InstitutionUpdate(BaseModel):
             result.append(domain)
         return sorted(set(result))
 
-
-class _IdentifierPatternValidation(BaseModel):
-    student_identifier_pattern: Optional[str] = None
-    faculty_identifier_pattern: Optional[str] = None
-
-    @field_validator("student_identifier_pattern", "faculty_identifier_pattern")
-    @classmethod
-    def validate_pattern(cls, value):
-        if value is None or value == "":
-            return None
-        if len(value) > 120:
-            raise ValueError("Identifier pattern must be 120 characters or fewer.")
-        try:
-            re.compile(value)
-        except re.error as exc:
-            raise ValueError("Enter a valid identifier regular expression.") from exc
-        return value
