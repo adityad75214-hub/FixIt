@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends
 from app.core.database import get_database
 from app.core.security import require_roles
 from app.services.sla_service import check_ticket_sla
+from app.core.tenancy import institution_id_for
 
 router = APIRouter(prefix="/analytics", tags=["Analytics & Reporting"])
 
@@ -30,7 +31,7 @@ async def get_dashboard_analytics(current_user: dict = Depends(require_roles("ad
     sla_assessed_count = 0
     sla_met_count = 0
 
-    async for t in db.tickets.find({}):
+    async for t in db.tickets.find({"institution_id": institution_id_for(current_user)}):
         total_tickets += 1
         st = t.get("status", "open")
         pr = t.get("priority", "medium")
