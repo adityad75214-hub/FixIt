@@ -47,7 +47,8 @@ async def find_best_staff_for_ticket(category: str, institution_id: Optional[str
         await notify_admins(
             title="Auto-Assignment Alert: No Staff Available",
             message=f"Ticket created under category '{category}' could not be assigned. No active staff found.",
-            notif_type="system_alert"
+            notif_type="system_alert",
+            institution_id=institution_id
         )
         return None
 
