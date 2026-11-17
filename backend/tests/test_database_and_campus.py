@@ -186,3 +186,44 @@ def test_campus_and_ticket_data_are_isolated_between_institutions(client, admin_
     assert all(item["id"] != foreign_ticket_id for item in first_tickets.json())
     hidden_ticket = client.get(f"/api/tickets/{foreign_ticket_id}", headers=first_headers)
     assert hidden_ticket.status_code == 404
+
+
+def test_platform_admin_can_onboard_college_and_provision_college_admin(client):
+    import uuid
+    from app.core.database import get_database
+    from app.core.security import create_access_token
+
+    db = get_database()
+    platform_id = f"USR-PLATFORM-{uuid.uuid4().hex[:8].upper()}"
+    db.users.insert_one({
+        "_id": platform_id, "email": f"platform-{uuid.uuid4().hex[:6]}@fixit.example",
+        "name": "Platform Operator", "role": "platform_admin", "institution_id": "INST-PLATFORM",
+        "is_active": True, "token_version": 0, "created_at": "2026-01-01T00:00:00+00:00"
+    })
+    platform_token = create_access_token({"sub": platform_id, "role": "platform_admin", "ver": 0})
+    headers = {"Authorization": f"Bearer {platform_token}"}
+    slug = f"college-{uuid.uuid4().hex[:7]}"
+    created = client.post("/api/institutions", headers=headers, json={
+        "name": "New College Workspace", "slug": slug, "email_domains": ["newcollege.edu"]
+    })
+    assert created.status_code == 201, created.text
+    institution_id = created.json()["id"]
+
+    admin = client.post(f"/api/institutions/{institution_id}/admins", headers=headers, json={
+        "email": f"admin@newcollege.edu", "name": "College Admin", "password": "CollegeAdmin@123"
+    })
+    assert admin.status_code == 201, admin.text
+    college_token = create_access_token({"sub": admin.json()["id"], "role": "admin", "ver": 0})
+    college_headers = {"Authorization": f"Bearer {college_token}"}
+
+    campus = client.post("/api/campus", headers=college_headers, json={"name": "New College Campus", "code": "MAIN"})
+    assert campus.status_code == 201, campus.text
+    assert campus.json()["id"]
+    categories = client.get("/api/categories", headers=college_headers)
+    assert categories.status_code == 200
+    assert categories.json(), "New college should receive its own default categories"
+
+    denied = client.post("/api/institutions", headers=college_headers, json={
+        "name": "Unauthorized College", "slug": f"unauthorized-{uuid.uuid4().hex[:6]}", "email_domains": []
+    })
+    assert denied.status_code == 403
