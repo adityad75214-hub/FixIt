@@ -138,12 +138,13 @@ def test_admin_cannot_deactivate_own_admin_account(client, admin_token):
 
 def test_analytics_counts_tickets_beyond_previous_2000_record_cap(client, admin_token):
     sync_db = db_manager.db.sync_db
-    baseline = sync_db.tickets.count_documents({})
+    baseline = sync_db.tickets.count_documents({"institution_id": "INST-DEFAULT"})
     run_id = uuid.uuid4().hex[:8]
     now = datetime.now(timezone.utc).isoformat()
     docs = [
         {
             "_id": f"ANALYTICS-LIMIT-{run_id}-{index}",
+            "institution_id": "INST-DEFAULT",
             "ticket_id": f"FIXIT-ANALYTICS-LIMIT-{run_id}-{index}",
             "title": "Analytics scale verification",
             "description": "Synthetic record used to verify complete aggregation.",
@@ -168,13 +169,14 @@ def test_analytics_counts_tickets_beyond_previous_2000_record_cap(client, admin_
 
 def test_feedback_metrics_include_reviews_beyond_previous_1000_record_cap(client, admin_token):
     sync_db = db_manager.db.sync_db
-    baseline = sync_db.feedback.count_documents({})
-    baseline_fives = sync_db.feedback.count_documents({"rating": 5})
+    baseline = sync_db.feedback.count_documents({"institution_id": "INST-DEFAULT"})
+    baseline_fives = sync_db.feedback.count_documents({"institution_id": "INST-DEFAULT", "rating": 5})
     run_id = uuid.uuid4().hex[:8]
     now = datetime.now(timezone.utc).isoformat()
     docs = [
         {
             "_id": f"METRICS-LIMIT-{run_id}-{index}",
+            "institution_id": "INST-DEFAULT",
             "ticket_id": f"FIXIT-METRICS-LIMIT-{run_id}-{index}",
             "rating": 5,
             "comments": None,
@@ -200,6 +202,7 @@ def test_csv_export_streams_all_tickets_beyond_previous_1000_record_cap(client, 
     docs = [
         {
             "_id": f"CSV-LIMIT-{run_id}-{index}",
+            "institution_id": "INST-DEFAULT",
             "ticket_id": f"FIXIT-CSV-LIMIT-{run_id}-{index}",
             "title": "CSV scale verification",
             "category": "General IT Services",
