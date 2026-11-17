@@ -161,6 +161,8 @@ async def update_user_by_admin(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
+    if user.get("role") == "admin" and user_id == current_user["id"] and update_data.is_active is False:
+        raise HTTPException(status_code=400, detail="You cannot deactivate or demote your own administrator account.")
     if user.get("role") == "admin" and (update_data.is_active is not None or update_data.role is not None):
         raise HTTPException(status_code=403, detail="Use Administrator Governance to transfer, deactivate, or reactivate administrator access.")
     if update_data.role is not None and update_data.role.value == "admin" and user.get("role") != "admin":
