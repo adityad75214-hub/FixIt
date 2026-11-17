@@ -102,7 +102,7 @@ async def trigger_auto_assign(
     current_user: dict = Depends(require_roles("admin"))
 ):
     db = get_database()
-    ticket = await db.tickets.find_one({"$or": [{"_id": ticket_id}, {"ticket_id": ticket_id}]})
+    ticket = await db.tickets.find_one(scoped_filter(current_user, {"$or": [{"_id": ticket_id}, {"ticket_id": ticket_id}]}))
     if not ticket:
         raise HTTPException(status_code=404, detail="Ticket not found")
 
