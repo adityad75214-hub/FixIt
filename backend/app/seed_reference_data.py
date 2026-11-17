@@ -27,9 +27,10 @@ async def seed_reference_data() -> None:
             **category,
             "description": f"Issues relating to campus {category['name'].lower()}",
             "is_active": True,
+            "institution_id": "INST-DEFAULT",
         }
         await db.categories.update_one(
-            {"name": category["name"]},
+            {"name": category["name"], "institution_id": "INST-DEFAULT"},
             {"$setOnInsert": doc},
             upsert=True,
         )
@@ -42,7 +43,7 @@ async def seed_reference_data() -> None:
     ]
     for policy in policies:
         await db.sla_policies.update_one(
-            {"priority": policy["priority"]},
-            {"$setOnInsert": {**policy, "updated_at": now_iso}},
+            {"priority": policy["priority"], "institution_id": "INST-DEFAULT"},
+            {"$setOnInsert": {**policy, "updated_at": now_iso, "institution_id": "INST-DEFAULT"}},
             upsert=True,
         )
