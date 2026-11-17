@@ -15,7 +15,7 @@ from app.core.security import (
     get_current_user
 )
 from app.core.audit import record_audit_log
-from app.models.user import UserCreate, UserLogin, UserResponse, Token, PasswordChange, UserUpdate
+from app.models.user import UserCreate, UserLogin, UserResponse, Token, PasswordChange, UserUpdate, UserPreferences
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
@@ -286,6 +286,7 @@ async def login(credentials: UserLogin, request: Request, response: Response):
         phone=user.get("phone"),
         identifier=user.get("identifier"),
         specialization=user.get("specialization") or [],
+        avatar_url=user.get("avatar_url"),
         is_active=user.get("is_active", True),
         created_at=user.get("created_at", datetime.now(timezone.utc).isoformat())
     )
@@ -391,6 +392,7 @@ async def get_my_profile(current_user: dict = Depends(get_current_user)):
         phone=current_user.get("phone"),
         identifier=current_user.get("identifier"),
         specialization=current_user.get("specialization") or [],
+        avatar_url=current_user.get("avatar_url"),
         is_active=current_user.get("is_active", True),
         created_at=current_user.get("created_at", "")
     )
@@ -408,6 +410,11 @@ async def update_my_profile(
         update_dict["phone"] = update_data.phone
     if update_data.department is not None:
         update_dict["department"] = update_data.department
+    if update_data.avatar_url is not None:
+        avatar = update_data.avatar_url.strip()
+        if avatar and not avatar.startswith("https://"):
+            raise HTTPException(status_code=400, detail="Profile image URL must use HTTPS.")
+        update_dict["avatar_url"] = avatar or None
     if update_data.specialization is not None and current_user["role"] in ["staff", "admin"]:
         update_dict["specialization"] = update_data.specialization
 
@@ -426,6 +433,7 @@ async def update_my_profile(
         phone=updated.get("phone"),
         identifier=updated.get("identifier"),
         specialization=updated.get("specialization") or [],
+        avatar_url=updated.get("avatar_url"),
         is_active=updated.get("is_active", True),
         created_at=updated.get("created_at", "")
     )
@@ -457,3 +465,30 @@ async def change_password(
         details={"status": "success"}
     )
     return {"message": "Password changed successfully"}
+
+
+
+@router.get("/preferences")
+async def get_my_preferences(current_user: dict = Depends(get_current_user)):
+    db = get_database()
+    doc = await db.user_preferences.find_one({"user_id": current_user["id"]}) or {}
+    return {
+        "email_notifications": doc.get("email_notifications", True),
+        "in_app_notifications": doc.get("in_app_notifications", True),
+        "language": doc.get("language", "en"),
+    }
+
+
+@router.put("/preferences")
+async def update_my_preferences(
+    preferences: UserPreferences,
+    current_user: dict = Depends(get_current_user),
+):
+    db = get_database()
+    values = preferences.model_dump()
+    await db.user_preferences.update_one(
+        {"user_id": current_user["id"]},
+        {"$set": {**values, "updated_at": datetime.now(timezone.utc).isoformat()}},
+        upsert=True,
+    )
+    return values
