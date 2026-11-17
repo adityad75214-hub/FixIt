@@ -17,9 +17,9 @@ async def submit_feedback(
     current_user: dict = Depends(get_current_user)
 ):
     db = get_database()
-    ticket = await db.tickets.find_one({
+    ticket = await db.tickets.find_one(scoped_filter(current_user, {
         "$or": [{"_id": feedback_in.ticket_id}, {"ticket_id": feedback_in.ticket_id}]
-    })
+    }))
     if not ticket:
         raise HTTPException(status_code=404, detail="Ticket not found")
 
