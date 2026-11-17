@@ -122,7 +122,7 @@ export default function PlatformAdminDashboard() {
               <label className="form-label" htmlFor="admin-institution">Institution workspace</label>
               <select id="admin-institution" className="form-control" value={selectedInstitution} onChange={(e) => setSelectedInstitution(e.target.value)} required>
                 <option value="">Select an institution</option>
-                {institutions.map((item) => <option key={item.id} value={item.id}>{item.name} ({item.slug})</option>)}
+                {institutions.filter((item) => item.status === 'active').map((item) => <option key={item.id} value={item.id}>{item.name} ({item.slug})</option>)}
               </select>
             </div>
             {selected && <p style={{ color: 'var(--text-muted)', marginBottom: '1rem' }}>Administrator will have access only to <strong>{selected.name}</strong>.</p>}
