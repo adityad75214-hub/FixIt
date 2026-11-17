@@ -29,6 +29,20 @@ async def validate_campus_location(building: str, floor: str, room: str, campus_
     if settings.is_production and not campus_id:
         return False, "Select a configured campus before submitting a ticket.", None
 
+    # Campus-level outdoor/shared places (gates, grounds, bus stops, open courts)
+    # do not belong to a building or floor but remain valid report locations.
+    if campus_id and building.strip().casefold() in {"campus-wide / outdoor", "campus grounds", "outdoor"}:
+        outdoor_location = await db.campus_locations.find_one({
+            "institution_id": institution_id,
+            "campus_id": campus_id,
+            "is_active": True,
+            "location_type": "custom",
+            "$or": [{"building_id": None}, {"building_id": {"$exists": False}}],
+            "name": {"$regex": f"^{re.escape(room.strip())}$", "$options": "i"},
+        })
+        if outdoor_location and floor.strip().casefold() in {"outdoor", "not applicable", "ground", "campus-wide"}:
+            return True, None, None
+
     # New campus hierarchy is authoritative whenever the building exists.
     building_query = {
         "name": {"$regex": f"^{re.escape(building.strip())}$", "$options": "i"},
