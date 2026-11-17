@@ -55,7 +55,6 @@ def test_student_can_register_after_college_email_otp(client, monkeypatch):
         "institution_slug": slug,
         "name": "Verified Student",
         "email": email,
-        "password": "SecurePassphrase123!",
         "role": "student",
         "department": "Computer Science",
         "identifier": "USN-OTP-001",
