@@ -303,7 +303,7 @@ def test_platform_admin_can_onboard_college_and_provision_college_admin(client, 
     })
     assert admin.status_code == 202, admin.text
     assert sent["recipient"] == "admin@newcollege.edu"
-    raw_token = re.search(r"token=([^\\s]+)", sent["body"]).group(1)
+    raw_token = re.search(r"token=([^\s]+)", sent["body"]).group(1)
     accepted = client.post("/api/institutions/admin-invitations/accept", json={
         "token": raw_token, "password": "CollegeAdmin@123"
     })
