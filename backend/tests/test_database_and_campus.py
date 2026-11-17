@@ -235,6 +235,31 @@ def test_campus_and_ticket_data_are_isolated_between_institutions(client, admin_
     hidden_auto_assignment = client.post(f"/api/assignments/{foreign_ticket_id}/auto-assign", headers=first_headers)
     assert hidden_auto_assignment.status_code == 404
 
+    foreign_article_id = f"KB-{uuid.uuid4().hex[:8].upper()}"
+    sync_db.knowledge_base.insert_one({
+        "_id": foreign_article_id, "institution_id": institution_id,
+        "title": "Private college article", "category": "Facilities",
+        "content": "This article belongs to another institution.",
+        "is_published": True, "tags": [], "created_at": "2026-01-01T00:00:00+00:00"
+    })
+    hidden_article = client.get(f"/api/knowledge-base/{foreign_article_id}", headers=first_headers)
+    assert hidden_article.status_code == 404
+
+    first_users = client.get("/api/users", headers=first_headers)
+    assert first_users.status_code == 200
+    assert all(user["id"] != second_admin_id for user in first_users.json())
+
+    foreign_notification_id = f"NOTIF-{uuid.uuid4().hex[:12].upper()}"
+    sync_db.notifications.insert_one({
+        "_id": foreign_notification_id, "user_id": "USR-TEST-ADMIN",
+        "institution_id": institution_id, "title": "Foreign tenant notification",
+        "message": "This should not be visible in the default workspace.",
+        "is_read": False, "created_at": "2026-01-01T00:00:00+00:00"
+    })
+    notifications = client.get("/api/notifications", headers=first_headers)
+    assert notifications.status_code == 200
+    assert all(item["id"] != foreign_notification_id for item in notifications.json()["notifications"])
+
 
 def test_platform_admin_can_onboard_college_and_provision_college_admin(client):
     import uuid
