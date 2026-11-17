@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Bell, Check, Clock, ExternalLink } from 'lucide-react';
+import { Bell, Check, ExternalLink } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { notificationService } from '../api/services';
 import { useLanguage } from '../context/LanguageContext';
