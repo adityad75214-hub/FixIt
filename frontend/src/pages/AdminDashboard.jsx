@@ -86,6 +86,9 @@ export default function AdminDashboard() {
           <Link to="/tickets" className="btn btn-navy">
             Manage All Tickets
           </Link>
+          <Link to="/admin/administrators" className="btn btn-secondary">
+            <ShieldCheck size={16} /> Invite Administrators
+          </Link>
         </div>
       </div>
 
