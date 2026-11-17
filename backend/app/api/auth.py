@@ -1,10 +1,13 @@
 import uuid
 import re
+import secrets
+import asyncio
 from datetime import datetime, timezone
 from datetime import timedelta
 from pymongo import ReturnDocument
 from pymongo.errors import DuplicateKeyError
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from pydantic import BaseModel, EmailStr, Field
 from app.core.database import get_database
 from app.core.config import settings
 from app.core.security import (
