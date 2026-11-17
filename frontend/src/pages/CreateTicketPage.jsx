@@ -784,6 +784,7 @@ export default function CreateTicketPage() {
             </div>
           </div>
 
+          {formData.location_type === 'campus' && <>
           {/* Campus is a required parent in a multi-campus installation. */}
           {campuses.length > 0 && <div className="form-group" style={{ maxWidth: '420px' }}>
             <label className="form-label" htmlFor="ticket-campus">Campus *</label>
@@ -859,7 +860,9 @@ export default function CreateTicketPage() {
               </datalist>
             </div>
           </div>
-          <p className="form-hint">{formData.location_type === 'campus' ? 'Use a registered campus location. If a building, floor, or room is missing, ask an administrator to add it under Campus Setup.' : 'Campus building, floor, and room are not required for online or location-independent requests.'}</p>
+          <p className="form-hint">Use a registered campus location. If a building, floor, or room is missing, ask an administrator to add it under Campus Setup.</p>
+          </>}
+          {formData.location_type !== 'campus' && <p className="form-hint">This request does not require a campus building, floor, or room.</p>}
 
           {/* Department (Derived), Affected Users, Priority */}
           <div className="grid-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.25rem', marginTop: '0.5rem' }}>
