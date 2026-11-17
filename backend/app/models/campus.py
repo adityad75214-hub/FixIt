@@ -28,6 +28,7 @@ class BuildingResponse(BuildingBase):
 
 class FloorBase(BaseModel):
     building_id: str = Field(..., min_length=1, max_length=80)
+    block_id: Optional[str] = Field(default=None, max_length=80)
     floor_number: int = Field(..., ge=-10, le=200)
     floor_name: str = Field(..., min_length=1, max_length=60)
     is_active: bool = True
