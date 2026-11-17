@@ -95,6 +95,9 @@ async def get_current_user(
         institution = await db.institutions.find_one({"_id": user["institution_id"]})
         if not institution or institution.get("status", "active") != "active":
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="This institution workspace is suspended or unavailable. Contact FixIt platform operations.")
+        user["institution_name"] = institution.get("name", "College Workspace")
+    else:
+        user["institution_name"] = "FixIt Platform Operations"
 
     return user
 
