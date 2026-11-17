@@ -13,7 +13,7 @@ describe('FixIt Design System & Navigation Suite', () => {
 
   it('renders landing page with platform branding and sign in link', () => {
     render(<App />);
-    const headings = screen.getAllByText(/College IT Helpdesk/i);
+    const headings = screen.getAllByText(/Campus Support/i);
     expect(headings.length).toBeGreaterThan(0);
     expect(screen.getAllByText(/FixIt/i).length).toBeGreaterThan(0);
   });
