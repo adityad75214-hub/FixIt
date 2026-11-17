@@ -208,7 +208,7 @@ async def register(user_in: UserCreate, response: Response, request: Request):
         action="USER_REGISTER",
         resource_type="user",
         resource_id=user_id,
-        actor={"id": user_id, "name": new_user["name"], "email": new_user["email"], "role": new_user["role"]},
+        actor={"id": user_id, "name": new_user["name"], "email": new_user["email"], "role": new_user["role"], "institution_id": institution_id},
         details={"email": new_user["email"], "role": new_user["role"]}
     )
 
@@ -291,7 +291,7 @@ async def login(credentials: UserLogin, request: Request, response: Response):
         action="USER_LOGIN",
         resource_type="user",
         resource_id=user_id,
-        actor={"id": user_id, "name": user["name"], "email": user["email"], "role": user["role"]},
+        actor={"id": user_id, "name": user["name"], "email": user["email"], "role": user["role"], "institution_id": user.get("institution_id") or "INST-DEFAULT"},
         details={"login_time": datetime.now(timezone.utc).isoformat()}
     )
 
