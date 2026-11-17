@@ -26,6 +26,7 @@ from app.api.audit_logs import router as audit_logs_router
 from app.api.incidents import router as incidents_router
 from app.api.feature_requests import router as feature_requests_router
 from app.api.institutions import router as institutions_router
+from app.api.registration import router as registration_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
