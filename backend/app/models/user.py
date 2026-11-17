@@ -47,6 +47,7 @@ class UserResponse(UserBase):
     created_at: str
     active_tickets_count: Optional[int] = 0
     institution_id: Optional[str] = None
+    institution_name: Optional[str] = None
 
 class Token(BaseModel):
     access_token: str
