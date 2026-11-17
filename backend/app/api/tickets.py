@@ -378,9 +378,9 @@ async def update_ticket_status(
     current_user: dict = Depends(get_current_user)
 ):
     db = get_database()
-    ticket = await db.tickets.find_one({
+    ticket = await db.tickets.find_one(scoped_filter(current_user, {
         "$or": [{"_id": ticket_id}, {"ticket_id": ticket_id}]
-    })
+    }))
     if not ticket:
         raise HTTPException(status_code=404, detail="Ticket not found")
 
@@ -481,7 +481,7 @@ async def update_ticket_priority(
     now_iso = datetime.now(timezone.utc).isoformat()
 
     # Recalculate SLA deadline based on updated priority from active DB policy
-    sla_deadline, target_hours = await calculate_sla_deadline_from_db(new_priority)
+    sla_deadline, target_hours = await calculate_sla_deadline_from_db(new_priority, institution_id_for(current_user))
 
     timeline_event = {
         "action": "PRIORITY_OVERRIDE",
@@ -517,7 +517,7 @@ async def update_ticket_priority(
         details={"old_priority": old_priority, "new_priority": new_priority, "reason": priority_update.reason}
     )
 
-    updated_doc = await db.tickets.find_one({"_id": ticket["_id"]})
+    updated_doc = await db.tickets.find_one(scoped_filter(current_user, {"_id": ticket["_id"]}))
     return format_ticket_doc(updated_doc)
 
 @router.put("/{ticket_id}/link-incident")
