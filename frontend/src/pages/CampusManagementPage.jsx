@@ -6,6 +6,8 @@ const EMPTY_CAMPUS = { name: '', code: '' };
 const EMPTY_BUILDING = { campus_id: '', name: '', code: '', total_floors: 1 };
 const EMPTY_FLOOR = { building_id: '', floor_number: 0, floor_name: 'Ground Floor' };
 const EMPTY_ROOM = { building_id: '', floor_id: '', room_number: '', room_name: '', department: '' };
+const EMPTY_BLOCK = { building_id: '', name: '', code: '' };
+const EMPTY_LOCATION = { campus_id: '', building_id: '', block_id: '', floor_id: '', name: '', code: '', category: 'classroom', description: '' };
 
 export default function CampusManagementPage() {
   const [campuses, setCampuses] = useState([]);
@@ -20,6 +22,8 @@ export default function CampusManagementPage() {
   const [buildingForm, setBuildingForm] = useState(EMPTY_BUILDING);
   const [floorForm, setFloorForm] = useState(EMPTY_FLOOR);
   const [roomForm, setRoomForm] = useState(EMPTY_ROOM);
+  const [blockForm, setBlockForm] = useState(EMPTY_BLOCK);
+  const [locationForm, setLocationForm] = useState(EMPTY_LOCATION);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -36,6 +40,8 @@ export default function CampusManagementPage() {
       setBuildingForm(prev => ({ ...prev, campus_id: prev.campus_id || campusRows[0]?.id || '' }));
       setFloorForm(prev => ({ ...prev, building_id: prev.building_id || buildingRows[0]?.id || '' }));
       setRoomForm(prev => ({ ...prev, building_id: prev.building_id || buildingRows[0]?.id || '' }));
+      setBlockForm(prev => ({ ...prev, building_id: prev.building_id || buildingRows[0]?.id || '' }));
+      setLocationForm(prev => ({ ...prev, campus_id: prev.campus_id || campusRows[0]?.id || '', building_id: prev.building_id || buildingRows[0]?.id || '' }));
     } catch (err) {
       setError(err.response?.data?.detail || 'Campus configuration could not be loaded.');
     } finally {
@@ -75,10 +81,18 @@ export default function CampusManagementPage() {
         setFloorForm(prev => ({ ...EMPTY_FLOOR, building_id: prev.building_id }));
         setSuccess('Floor created. You can now add rooms.');
         setActiveForm('room');
-      } else {
+      } else if (activeForm === 'room') {
         await campusService.createRoom({ ...roomForm, is_active: true, order: 0 });
         setRoomForm(prev => ({ ...EMPTY_ROOM, building_id: prev.building_id, floor_id: prev.floor_id }));
         setSuccess('Room created and linked to the selected floor.');
+      } else if (activeForm === 'block') {
+        await campusService.createBlock({ ...blockForm, is_active: true, order: 0 });
+        setBlockForm(prev => ({ ...EMPTY_BLOCK, building_id: prev.building_id }));
+        setSuccess('Block added to the selected building.');
+      } else {
+        await campusService.createLocation({ ...locationForm, building_id: locationForm.building_id || null, block_id: locationForm.block_id || null, floor_id: locationForm.floor_id || null, code: locationForm.code || null, is_active: true, order: 0 });
+        setLocationForm(prev => ({ ...EMPTY_LOCATION, campus_id: prev.campus_id, building_id: prev.building_id }));
+        setSuccess('Campus location added. Students can now select it when reporting issues.');
       }
       await load();
     } catch (err) {
@@ -93,12 +107,14 @@ export default function CampusManagementPage() {
     { id: 'building', label: 'Building', icon: Building2 },
     { id: 'floor', label: 'Floor', icon: Layers3 },
     { id: 'room', label: 'Room', icon: DoorOpen },
+    { id: 'block', label: 'Block', icon: Layers3 },
+    { id: 'location', label: 'Other location', icon: DoorOpen },
   ];
 
   return (
     <div className="page-wrapper">
       <div className="page-header">
-        <div><h1 className="page-title">Campus Configuration</h1><p className="page-subtitle">Manage the real campus → building → floor → room hierarchy used by ticket reporting.</p></div>
+        <div><h1 className="page-title">Campus Configuration</h1><p className="page-subtitle">Configure campuses, buildings, blocks, floors, classrooms, hostels and any other reportable location.</p></div>
         <button className="btn btn-secondary" onClick={load} disabled={loading}><RefreshCw size={16} /> Refresh</button>
       </div>
 
@@ -131,10 +147,24 @@ export default function CampusManagementPage() {
               <div className="grid-2"><div className="form-group"><label className="form-label" htmlFor="room-number">Room number</label><input id="room-number" className="form-control" required value={roomForm.room_number} onChange={e => setRoomForm({ ...roomForm, room_number: e.target.value })} placeholder="G01" /></div><div className="form-group"><label className="form-label" htmlFor="room-name">Room name</label><input id="room-name" className="form-control" value={roomForm.room_name} onChange={e => setRoomForm({ ...roomForm, room_name: e.target.value })} placeholder="Computer Lab" /></div></div>
               <div className="form-group"><label className="form-label" htmlFor="room-department">Department (optional)</label><input id="room-department" className="form-control" value={roomForm.department} onChange={e => setRoomForm({ ...roomForm, department: e.target.value })} placeholder="Computer Science" /></div>
             </>}
-            <button className="btn btn-primary" type="submit" disabled={saving || (activeForm === 'building' && !campuses.length) || (['floor', 'room'].includes(activeForm) && !buildings.length)}><Plus size={16} /> {saving ? 'Saving…' : `Add ${activeForm}`}</button>
+            {activeForm === 'block' && <>
+              <div className="form-group"><label className="form-label" htmlFor="block-building">Building</label><select id="block-building" className="form-control" required value={blockForm.building_id} onChange={e => setBlockForm({ ...blockForm, building_id: e.target.value })}><option value="">Select building</option>{buildings.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select></div>
+              <div className="form-group"><label className="form-label" htmlFor="block-name">Block / wing name</label><input id="block-name" className="form-control" required value={blockForm.name} onChange={e => setBlockForm({ ...blockForm, name: e.target.value })} placeholder="Block A / East Wing" /></div>
+              <div className="form-group"><label className="form-label" htmlFor="block-code">Block code</label><input id="block-code" className="form-control" required value={blockForm.code} onChange={e => setBlockForm({ ...blockForm, code: e.target.value.toUpperCase() })} placeholder="A" /></div>
+            </>}
+            {activeForm === 'location' && <>
+              <div className="form-group"><label className="form-label" htmlFor="location-name">Location name</label><input id="location-name" className="form-control" required value={locationForm.name} onChange={e => setLocationForm({ ...locationForm, name: e.target.value })} placeholder="CSE Classroom 204 / Main Gate" /></div>
+              <div className="form-group"><label className="form-label" htmlFor="location-category">Location category</label><select id="location-category" className="form-control" value={locationForm.category} onChange={e => setLocationForm({ ...locationForm, category: e.target.value })}>{['classroom','laboratory','hostel_room','washroom','office','library','canteen','auditorium','seminar_hall','medical_centre','sports_area','parking','gate','corridor','staircase','elevator','common_room','dining_hall','study_room','other'].map(v => <option key={v} value={v}>{v.replaceAll('_',' ').replace(/\b\w/g, c => c.toUpperCase())}</option>)}</select></div>
+              <div className="form-group"><label className="form-label" htmlFor="location-campus">Campus</label><select id="location-campus" className="form-control" required value={locationForm.campus_id} onChange={e => setLocationForm({ ...locationForm, campus_id: e.target.value })}><option value="">Select campus</option>{campuses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select></div>
+              <div className="form-group"><label className="form-label" htmlFor="location-building">Building (optional for outdoor areas)</label><select id="location-building" className="form-control" value={locationForm.building_id} onChange={e => setLocationForm({ ...locationForm, building_id: e.target.value, block_id: '', floor_id: '' })}><option value="">No building / outdoor location</option>{buildings.filter(b => !locationForm.campus_id || b.campus_id === locationForm.campus_id).map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select></div>
+              <div className="form-group"><label className="form-label" htmlFor="location-floor">Floor (optional)</label><select id="location-floor" className="form-control" value={locationForm.floor_id} onChange={e => setLocationForm({ ...locationForm, floor_id: e.target.value })}><option value="">No specific floor</option>{roomFloors.map(f => <option key={f.id} value={f.id}>{f.floor_name}</option>)}</select></div>
+              <div className="form-group"><label className="form-label" htmlFor="location-code">Location code (optional)</label><input id="location-code" className="form-control" value={locationForm.code} onChange={e => setLocationForm({ ...locationForm, code: e.target.value.toUpperCase() })} placeholder="CLS-204" /></div>
+              <div className="form-group"><label className="form-label" htmlFor="location-description">Description (optional)</label><textarea id="location-description" className="form-control" value={locationForm.description} onChange={e => setLocationForm({ ...locationForm, description: e.target.value })} placeholder="Directions or additional details" /></div>
+            </>}
+            <button className="btn btn-primary" type="submit" disabled={saving || (['building','location'].includes(activeForm) && !campuses.length) || (['floor','room','block'].includes(activeForm) && !buildings.length)}><Plus size={16} /> {saving ? 'Saving…' : `Add ${activeForm}`}</button>
           </form>
           {activeForm === 'building' && !campuses.length && <p className="form-error">Create a campus first.</p>}
-          {['floor', 'room'].includes(activeForm) && !buildings.length && <p className="form-error">Create a building first.</p>}
+          {['floor', 'room', 'block'].includes(activeForm) && !buildings.length && <p className="form-error">Create a building first.</p>}
         </section>
 
         <section className="card">
@@ -143,6 +173,7 @@ export default function CampusManagementPage() {
             <div className="campus-tree">
               {hierarchy.map(building => <div className="campus-tree-building" key={building.id}>
                 <div className="campus-tree-title"><Building2 size={16} /><strong>{building.name}</strong><span>{building.code}</span></div>
+                {(building.blocks || []).map(block => <div className="campus-tree-floor" key={block.id}><div><Layers3 size={14} /> {block.name} <small>{block.code}</small></div></div>)}
                 {(building.floors || []).map(floor => <div className="campus-tree-floor" key={floor.id}><div><Layers3 size={14} /> {floor.floor_name}</div><ul>{(floor.rooms || []).map(room => <li key={room.id}><span>{room.room_number}</span>{room.room_name && ` · ${room.room_name}`}{room.department && <small> — {room.department}</small>}</li>)}</ul></div>)}
               </div>)}
             </div>
