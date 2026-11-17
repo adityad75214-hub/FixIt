@@ -132,7 +132,7 @@ async def vote_article(
         raise HTTPException(status_code=409, detail="You have already voted on this article.") from None
 
     field = "helpful_count" if is_helpful else "not_helpful_count"
-    await db.knowledge_base.update_one({"_id": article_id}, {"$inc": {field: 1}})
+    await db.knowledge_base.update_one({"_id": article_id, "institution_id": institution_id_for(current_user)}, {"$inc": {field: 1}})
     updated = await db.knowledge_base.find_one(scoped_filter(current_user, {"_id": article_id}))
     return {
         "message": "Thank you for your feedback!",
@@ -192,8 +192,8 @@ async def update_article(
     update_data = {k: v for k, v in update_in.model_dump().items() if v is not None}
     update_data["updated_at"] = now_iso
 
-    await db.knowledge_base.update_one({"_id": article_id}, {"$set": update_data})
-    updated = await db.knowledge_base.find_one({"_id": article_id})
+    await db.knowledge_base.update_one({"_id": article_id, "institution_id": institution_id_for(current_user)}, {"$set": update_data})
+    updated = await db.knowledge_base.find_one(scoped_filter(current_user, {"_id": article_id}))
     await record_audit_log(
         action="KB_ARTICLE_UPDATED",
         resource_type="knowledge_base",
@@ -223,7 +223,7 @@ async def delete_article(
     current_user: dict = Depends(require_roles("admin"))
 ):
     db = get_database()
-    article = await db.knowledge_base.find_one({"_id": article_id})
+    article = await db.knowledge_base.find_one(scoped_filter(current_user, {"_id": article_id}))
     if not article:
         raise HTTPException(status_code=404, detail="Article not found")
     await db.knowledge_base.delete_one(scoped_filter(current_user, {"_id": article_id}))
