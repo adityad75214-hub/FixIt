@@ -8,7 +8,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    PROJECT_NAME: str = "FixIt - College IT Helpdesk"
+    PROJECT_NAME: str = "FixIt - Campus Support Platform"
     API_V1_STR: str = "/api"
     ENVIRONMENT: Literal["development", "test", "production"] = "development"
     SECRET_KEY: str = ""
