@@ -226,6 +226,7 @@ async def register(user_in: UserCreate, response: Response, request: Request):
     # Set rotating httpOnly SameSite cookie
     set_refresh_cookie(response, raw_refresh)
 
+    institution_doc = await db.institutions.find_one({"_id": institution_id})
     user_response = UserResponse(
         id=user_id,
         email=new_user["email"],
@@ -237,7 +238,8 @@ async def register(user_in: UserCreate, response: Response, request: Request):
         specialization=[],
         is_active=True,
         created_at=new_user["created_at"],
-        institution_id=institution_id
+        institution_id=institution_id,
+        institution_name=(institution_doc or {}).get("name", "Default Institution")
     )
     return Token(access_token=access_token, user=user_response)
 
@@ -299,6 +301,7 @@ async def login(credentials: UserLogin, request: Request, response: Response):
         details={"login_time": datetime.now(timezone.utc).isoformat()}
     )
 
+    institution_doc = await db.institutions.find_one({"_id": user.get("institution_id") or "INST-DEFAULT"})
     user_response = UserResponse(
         id=user_id,
         email=user["email"],
@@ -311,7 +314,8 @@ async def login(credentials: UserLogin, request: Request, response: Response):
         avatar_url=user.get("avatar_url"),
         is_active=user.get("is_active", True),
         created_at=user.get("created_at", datetime.now(timezone.utc).isoformat()),
-        institution_id=user.get("institution_id") or "INST-DEFAULT"
+        institution_id=user.get("institution_id") or "INST-DEFAULT",
+        institution_name=(institution_doc or {}).get("name", "Default Institution")
     )
     return Token(access_token=access_token, user=user_response)
 
@@ -368,6 +372,7 @@ async def refresh_access_token(request: Request, response: Response):
     set_refresh_cookie(response, new_raw)
 
     access_token = create_access_token(data={"sub": str(user["_id"]), "role": user["role"], "ver": user.get("token_version", 0)})
+    institution_doc = await db.institutions.find_one({"_id": user.get("institution_id") or "INST-DEFAULT"})
     user_response = UserResponse(
         id=str(user["_id"]),
         email=user["email"],
@@ -380,7 +385,8 @@ async def refresh_access_token(request: Request, response: Response):
         avatar_url=user.get("avatar_url"),
         is_active=user.get("is_active", True),
         created_at=user.get("created_at", datetime.now(timezone.utc).isoformat()),
-        institution_id=user.get("institution_id") or "INST-DEFAULT"
+        institution_id=user.get("institution_id") or "INST-DEFAULT",
+        institution_name=(institution_doc or {}).get("name", "Default Institution")
     )
     return Token(access_token=access_token, user=user_response)
 
@@ -425,7 +431,8 @@ async def get_my_profile(current_user: dict = Depends(get_current_user)):
         avatar_url=current_user.get("avatar_url"),
         is_active=current_user.get("is_active", True),
         created_at=current_user.get("created_at", ""),
-        institution_id=current_user.get("institution_id") or "INST-DEFAULT"
+        institution_id=current_user.get("institution_id") or "INST-DEFAULT",
+        institution_name=current_user.get("institution_name")
     )
 
 @router.put("/profile", response_model=UserResponse)
@@ -467,7 +474,8 @@ async def update_my_profile(
         avatar_url=updated.get("avatar_url"),
         is_active=updated.get("is_active", True),
         created_at=updated.get("created_at", ""),
-        institution_id=updated.get("institution_id") or "INST-DEFAULT"
+        institution_id=updated.get("institution_id") or "INST-DEFAULT",
+        institution_name=current_user.get("institution_name")
     )
 
 @router.post("/change-password")
