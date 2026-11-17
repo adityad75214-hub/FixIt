@@ -257,7 +257,7 @@ async def make_primary_administrator(
     await db.users.update_one({"_id": user_id, "institution_id": institution_id, "role": "admin"}, {"$set": {"admin_level": "primary"}})
     await record_audit_log(
         action="PRIMARY_ADMIN_TRANSFERRED", resource_type="institution",
-        resource_id=institution_id, actor=current_user,
+        resource_id=institution_id, actor={**current_user, "institution_id": institution_id},
         details={"previous_primary_admin_id": str(previous["_id"]) if previous else None, "new_primary_admin_id": user_id},
     )
     return {"message": "Primary administrator assignment updated."}
