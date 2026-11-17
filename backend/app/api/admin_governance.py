@@ -124,6 +124,12 @@ async def request_additional_administrator(
     _check_domain(email, institution)
     if await db.users.find_one({"email": email}):
         raise HTTPException(status_code=409, detail="An account with this email already exists.")
+    primary_admin = await db.users.find_one({
+        "institution_id": institution_id, "role": "admin",
+        "admin_level": "primary", "is_active": True
+    })
+    if not primary_admin:
+        raise HTTPException(status_code=409, detail="This institution has no active Primary College Admin. Contact FixIt platform operations.")
     pending = await db.admin_requests.find_one({"institution_id": institution_id, "email": email, "status": "pending"})
     if pending:
         raise HTTPException(status_code=409, detail="A pending administrator request already exists for this email.")
@@ -135,6 +141,17 @@ async def request_additional_administrator(
         "status": "pending", "requested_by": current_user["id"], "created_at": now,
     }
     await db.admin_requests.insert_one(request_doc)
+    await db.notifications.insert_one({
+        "_id": f"NOT-{uuid.uuid4().hex[:12].upper()}",
+        "user_id": str(primary_admin["_id"]),
+        "institution_id": institution_id,
+        "title": "Administrator approval requested",
+        "message": f"{payload.name.strip()} requested College Admin access.",
+        "link": "/admin/administrators",
+        "type": "admin_request",
+        "is_read": False,
+        "created_at": now.isoformat(),
+    })
     await record_audit_log(
         action="INSTITUTION_ADMIN_REQUESTED", resource_type="admin_request",
         resource_id=request_id, actor=current_user,
@@ -180,6 +197,17 @@ async def approve_admin_request(
     if updated.modified_count != 1:
         await db.admin_invitations.delete_one({"_id": invitation_id})
         raise HTTPException(status_code=409, detail="This request was already reviewed.")
+    await db.notifications.insert_one({
+        "_id": f"NOT-{uuid.uuid4().hex[:12].upper()}",
+        "user_id": request_doc["requested_by"],
+        "institution_id": institution_id,
+        "title": "Administrator request approved",
+        "message": f"The request for {request_doc['email']} was approved. An invitation email was sent.",
+        "link": "/admin/administrators",
+        "type": "admin_request",
+        "is_read": False,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    })
     await record_audit_log(
         action="INSTITUTION_ADMIN_REQUEST_APPROVED", resource_type="admin_request",
         resource_id=request_id, actor=current_user,
@@ -203,6 +231,19 @@ async def reject_admin_request(
     )
     if result.modified_count != 1:
         raise HTTPException(status_code=404, detail="Pending administrator request not found.")
+    request_doc = await db.admin_requests.find_one({"_id": request_id, "institution_id": institution_id})
+    if request_doc:
+        await db.notifications.insert_one({
+            "_id": f"NOT-{uuid.uuid4().hex[:12].upper()}",
+            "user_id": request_doc["requested_by"],
+            "institution_id": institution_id,
+            "title": "Administrator request rejected",
+            "message": f"The request for {request_doc['email']} was rejected.",
+            "link": "/admin/administrators",
+            "type": "admin_request",
+            "is_read": False,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        })
     await record_audit_log(
         action="INSTITUTION_ADMIN_REQUEST_REJECTED", resource_type="admin_request",
         resource_id=request_id, actor=current_user, details={},
