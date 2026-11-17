@@ -370,7 +370,8 @@ async def refresh_access_token(request: Request, response: Response):
         specialization=user.get("specialization") or [],
         avatar_url=user.get("avatar_url"),
         is_active=user.get("is_active", True),
-        created_at=user.get("created_at", datetime.now(timezone.utc).isoformat())
+        created_at=user.get("created_at", datetime.now(timezone.utc).isoformat()),
+        institution_id=user.get("institution_id") or "INST-DEFAULT"
     )
     return Token(access_token=access_token, user=user_response)
 
