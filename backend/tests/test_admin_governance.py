@@ -93,3 +93,38 @@ def test_admin_cannot_create_admin_through_user_management(client, admin_token):
         },
     )
     assert response.status_code == 403
+
+def test_platform_invitation_assigns_first_primary_admin(client, monkeypatch):
+    import app.services.notification_service as mailer
+
+    monkeypatch.setattr(settings, "SMTP_HOST", "smtp.test")
+    monkeypatch.setattr(settings, "SMTP_FROM_EMAIL", "noreply@fixit.test")
+    monkeypatch.setattr(settings, "APP_BASE_URL", "https://fixit.test")
+    sent = {}
+    monkeypatch.setattr(mailer, "_send_email", lambda recipient, subject, body: sent.update(recipient=recipient, body=body))
+
+    institution_id = f"INST-FIRST-{uuid.uuid4().hex[:8].upper()}"
+    db = db_manager.db.sync_db
+    db.institutions.insert_one({
+        "_id": institution_id, "name": "First Admin College",
+        "slug": f"first-{uuid.uuid4().hex[:6]}", "email_domains": ["first-test.edu"],
+        "status": "active",
+    })
+    platform_id = f"USR-PLATFORM-{uuid.uuid4().hex[:8]}"
+    db.users.insert_one({
+        "_id": platform_id, "email": f"platform-{uuid.uuid4().hex[:6]}@fixit.test",
+        "name": "Platform Operator", "role": "platform_admin",
+        "is_active": True, "token_version": 0,
+    })
+    platform_token = create_access_token({"sub": platform_id, "role": "platform_admin", "ver": 0})
+    email = f"primary-{uuid.uuid4().hex[:6]}@first-test.edu"
+
+    response = client.post(
+        f"/api/institutions/{institution_id}/admins/invitations",
+        headers={"Authorization": f"Bearer {platform_token}"},
+        json={"name": "First College Admin", "email": email},
+    )
+    assert response.status_code == 202, response.text
+    invitation = db.admin_invitations.find_one({"email": email})
+    assert invitation["admin_level"] == "primary"
+    assert sent["recipient"] == email
