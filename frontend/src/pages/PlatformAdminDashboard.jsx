@@ -3,7 +3,7 @@ import { Building2, Plus, RefreshCw, ShieldCheck, Users } from 'lucide-react';
 import { institutionService } from '../api/services';
 
 const emptyInstitution = { name: '', slug: '', email_domains: '' };
-const emptyAdmin = { email: '', name: '', password: '' };
+const emptyAdmin = { email: '', name: '' };
 const emptyEdit = { name: '', email_domains: '' };
 
 export default function PlatformAdminDashboard() {
@@ -58,9 +58,9 @@ export default function PlatformAdminDashboard() {
     if (!selectedInstitution) return;
     setSaving(true); setError(''); setNotice('');
     try {
-      const response = await institutionService.createAdmin(selectedInstitution, adminForm);
+      const response = await institutionService.inviteAdmin(selectedInstitution, adminForm);
       setAdminForm(emptyAdmin);
-      setNotice(`College administrator account created for ${response.data.email}. Share the temporary password securely and ask them to change it immediately.`);
+      setNotice(`Invitation sent to ${response.data.email}. They have 48 hours to accept it and set their own password.`);
     } catch (err) {
       setError(err.response?.data?.detail || 'Administrator account could not be created.');
     } finally { setSaving(false); }
@@ -140,7 +140,7 @@ export default function PlatformAdminDashboard() {
         </section>
 
         <section className="card">
-          <div className="card-header"><h2 className="card-title"><ShieldCheck size={18} /> Provision college administrator</h2></div>
+          <div className="card-header"><h2 className="card-title"><ShieldCheck size={18} /> Invite college administrator</h2></div>
           <form onSubmit={createAdmin}>
             <div className="form-group">
               <label className="form-label" htmlFor="admin-institution">Institution workspace</label>
@@ -149,7 +149,7 @@ export default function PlatformAdminDashboard() {
                 {institutions.filter((item) => item.status === 'active').map((item) => <option key={item.id} value={item.id}>{item.name} ({item.slug})</option>)}
               </select>
             </div>
-            {selected && <p style={{ color: 'var(--text-muted)', marginBottom: '1rem' }}>Administrator will have access only to <strong>{selected.name}</strong>.</p>}
+            {selected && <p style={{ color: 'var(--text-muted)', marginBottom: '1rem' }}>The invitee will receive access only to <strong>{selected.name}</strong> after accepting the email invitation.</p>}
             <div className="form-group">
               <label className="form-label" htmlFor="admin-name">Administrator name</label>
               <input id="admin-name" className="form-control" required minLength={2} maxLength={120} value={adminForm.name} onChange={(e) => setAdminForm({ ...adminForm, name: e.target.value })} />
@@ -158,11 +158,8 @@ export default function PlatformAdminDashboard() {
               <label className="form-label" htmlFor="admin-email">Official college email</label>
               <input id="admin-email" type="email" className="form-control" required value={adminForm.email} onChange={(e) => setAdminForm({ ...adminForm, email: e.target.value })} />
             </div>
-            <div className="form-group">
-              <label className="form-label" htmlFor="admin-password">Temporary password</label>
-              <input id="admin-password" type="password" className="form-control" required minLength={12} maxLength={128} value={adminForm.password} onChange={(e) => setAdminForm({ ...adminForm, password: e.target.value })} autoComplete="new-password" />
-            </div>
-            <button className="btn btn-primary" type="submit" disabled={saving || !selectedInstitution}><Users size={16} /> {saving ? 'Provisioning…' : 'Create college admin'}</button>
+            <p style={{ color: 'var(--text-muted)', marginBottom: '1rem' }}>No temporary password is created or shared. The administrator sets their own password through a single-use email link.</p>
+            <button className="btn btn-primary" type="submit" disabled={saving || !selectedInstitution}><Users size={16} /> {saving ? 'Sending invitation…' : 'Send administrator invitation'}</button>
           </form>
         </section>
       </div>
