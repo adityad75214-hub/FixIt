@@ -70,10 +70,13 @@ async def invite_institution_admin(institution_id: str, payload: InstitutionAdmi
         raise HTTPException(status_code=503, detail="Administrator invitations require SMTP_HOST, sender email, and APP_BASE_URL configuration.")
 
     db = get_database()
-    # Platform admins can invite the first admin for any college. College admins
-    # can invite additional admins only inside their own institution.
-    if current_user.get("role") != "platform_admin" and current_user.get("institution_id") != institution_id:
-        raise HTTPException(status_code=403, detail="You can invite administrators only for your own institution.")
+    # Platform admins provision the first Primary College Admin. Thereafter,
+    # only the Primary College Admin can issue direct invitations.
+    if current_user.get("role") != "platform_admin":
+        if current_user.get("institution_id") != institution_id:
+            raise HTTPException(status_code=403, detail="You can invite administrators only for your own institution.")
+        if current_user.get("admin_level") != "primary":
+            raise HTTPException(status_code=403, detail="Only the Primary College Admin can send direct administrator invitations. Submit a request for approval instead.")
 
     institution = await db.institutions.find_one({"_id": institution_id, "status": "active"})
     if not institution:
@@ -92,11 +95,15 @@ async def invite_institution_admin(institution_id: str, payload: InstitutionAdmi
     raw_token = __import__("secrets").token_urlsafe(48)
     now = datetime.now(timezone.utc)
     invitation_id = f"INV-{uuid.uuid4().hex[:12].upper()}"
+    active_admin_count = await db.users.count_documents({"institution_id": institution_id, "role": "admin", "is_active": True})
+    pending_primary = await db.admin_invitations.find_one({"institution_id": institution_id, "admin_level": "primary", "used_at": None, "expires_at": {"$gt": now}})
+    invited_admin_level = "primary" if current_user.get("role") == "platform_admin" and active_admin_count == 0 and pending_primary is None else "college"
     invite = {
         "_id": invitation_id,
         "email": email,
         "name": payload.name,
         "role": "admin",
+        "admin_level": invited_admin_level,
         "institution_id": institution_id,
         "token_hash": hash_token(raw_token),
         "created_at": now,
@@ -143,6 +150,7 @@ async def accept_institution_admin_invitation(payload: InstitutionAdminInviteAcc
         "password_hash": get_password_hash(payload.password),
         "name": invite["name"],
         "role": "admin",
+        "admin_level": invite.get("admin_level", "college"),
         "institution_id": invite["institution_id"],
         "department": "Administration",
         "specialization": [],
@@ -165,8 +173,8 @@ async def accept_institution_admin_invitation(payload: InstitutionAdminInviteAcc
     if consumed.modified_count != 1:
         await db.users.delete_one({"_id": user_id})
         raise HTTPException(status_code=400, detail="This invitation has already been used.")
-    await record_audit_log(action="INSTITUTION_ADMIN_INVITATION_ACCEPTED", resource_type="user", resource_id=user_id, actor={"id": user_id, "email": user["email"], "name": user["name"], "role": "admin", "institution_id": user["institution_id"]}, details={"institution_id": user["institution_id"]})
-    return {"message": "Administrator account created. You can now sign in.", "user": {"id": user_id, "email": user["email"], "name": user["name"], "role": "admin", "institution_id": user["institution_id"]}}
+    await record_audit_log(action="INSTITUTION_ADMIN_INVITATION_ACCEPTED", resource_type="user", resource_id=user_id, actor={"id": user_id, "email": user["email"], "name": user["name"], "role": "admin", "institution_id": user["institution_id"]}, details={"institution_id": user["institution_id"], "admin_level": user["admin_level"]})
+    return {"message": "Administrator account created. You can now sign in.", "user": {"id": user_id, "email": user["email"], "name": user["name"], "role": "admin", "admin_level": user["admin_level"], "institution_id": user["institution_id"]}}
 
 
 
