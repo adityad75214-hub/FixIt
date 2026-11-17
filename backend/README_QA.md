@@ -7,7 +7,7 @@ This is the single-college FixIt backend. It uses FastAPI and MongoDB. The seed 
 Create `backend/.env` from `.env.example` and set the MongoDB connection details. Keep this file private and do not commit it.
 
 ```powershell
-cd E:\FixIt_Complete\backend
+cd .\backend
 Copy-Item .env.example .env
 notepad .env
 ```
