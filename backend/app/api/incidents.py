@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field, field_validator
 from app.core.database import get_database
 from app.core.security import require_roles
 from app.core.audit import record_audit_log
+from app.core.tenancy import institution_id_for, scoped_filter
 
 router = APIRouter(prefix="/incidents", tags=["Master Incidents"])
 
@@ -32,7 +33,7 @@ class IncidentStatusUpdate(BaseModel):
 @router.get("", response_model=List[Dict[str, Any]])
 async def list_incidents(current_user: dict = Depends(require_roles("admin", "staff"))):
     db = get_database()
-    incidents = await db.incidents.find().sort("created_at", -1).to_list(None)
+    incidents = await db.incidents.find({"institution_id": institution_id_for(current_user)}).sort("created_at", -1).to_list(None)
     return [
         {
             "id": str(incident.get("_id", "")),
@@ -64,6 +65,7 @@ async def create_incident(
                 {"ticket_id": {"$in": requested_ids}},
             ]
         }
+        ticket_query["institution_id"] = institution_id_for(current_user)
         if current_user["role"] == "staff":
             ticket_query["assigned_to.id"] = current_user["id"]
         matched_tickets = await db.tickets.find(ticket_query).to_list(len(requested_ids))
@@ -84,6 +86,7 @@ async def create_incident(
     matched_custom_ids = [ticket["ticket_id"] for ticket in matched_tickets]
     doc = {
         "_id": inc_id,
+        "institution_id": institution_id_for(current_user),
         "title": incident_in.title,
         "description": incident_in.description,
         "category": incident_in.category,
@@ -99,16 +102,16 @@ async def create_incident(
 
     if matched_custom_ids:
         link_result = await db.tickets.update_many(
-            {"ticket_id": {"$in": matched_custom_ids}, "linked_incident_id": None},
+            {"ticket_id": {"$in": matched_custom_ids}, "institution_id": institution_id_for(current_user), "linked_incident_id": None},
             {"$set": {"linked_incident_id": inc_id}},
         )
         if link_result.matched_count != len(matched_custom_ids):
             # Roll back our partial writes if a concurrent request linked a ticket first.
             await db.tickets.update_many(
-                {"linked_incident_id": inc_id},
+                {"linked_incident_id": inc_id, "institution_id": institution_id_for(current_user)},
                 {"$unset": {"linked_incident_id": ""}},
             )
-            await db.incidents.delete_one({"_id": inc_id})
+            await db.incidents.delete_one({"_id": inc_id, "institution_id": institution_id_for(current_user)})
             raise HTTPException(status_code=409, detail="A selected ticket was linked to another incident. Refresh and retry.")
 
     await record_audit_log(
@@ -141,7 +144,7 @@ async def update_incident_status(
     db = get_database()
     now_iso = datetime.now(timezone.utc).isoformat()
     result = await db.incidents.update_one(
-        {"_id": incident_id},
+        {"_id": incident_id, "institution_id": institution_id_for(current_user)},
         {"$set": {"status": payload.status, "updated_at": now_iso}},
     )
     if not result.matched_count:
@@ -153,7 +156,7 @@ async def update_incident_status(
         actor=current_user,
         details={"status": payload.status},
     )
-    incident = await db.incidents.find_one({"_id": incident_id})
+    incident = await db.incidents.find_one({"_id": incident_id, "institution_id": institution_id_for(current_user)})
     return {
         "id": incident_id,
         "title": incident.get("title"),
