@@ -95,7 +95,7 @@ npm run build
 1. Provision a MongoDB database (MongoDB Atlas is suitable) and create a dedicated application database user with only the permissions the app needs.
 2. Copy `.env.production.example` to `.env.production` in the project root.
 3. Replace every placeholder. Use a unique `SECRET_KEY` of at least 64 characters, a MongoDB URI with a URL-encoded password, the actual public hostname in `ALLOWED_HOSTS`, and the matching HTTPS origin in `BACKEND_CORS_ORIGINS`.
-4. Keep public registration, demo seeding, mock-database fallback, and API docs disabled for production.
+4. Keep demo seeding, mock-database fallback, and API docs disabled for production. Enable public registration only with SMTP configured, using the college-email verification flow described below.
 5. Run `docker compose -f docker-compose.production.yml up --build -d`.
 6. Put the frontend behind a TLS-enabled reverse proxy or hosting platform. The included frontend container listens on port 8080 on the host; configure HTTPS and DNS at your hosting provider.
 7. Confirm `/health` reports `mongodb_connected` and test login, ticket creation, assignment, comments, notifications, and role permissions before opening access to users.
@@ -108,7 +108,7 @@ The deployment template deliberately does not create a database, seed demo users
 - Do not drop the database or collections to apply code updates.
 - The seed routine is insert-only and skips existing matching records.
 - The supplied archive does not contain your private `.env`, live MongoDB database, or production account credentials.
-- Demo account shortcuts and public registration controls are development-only. Production backend settings independently disable public registration and demo seeding.
+- Demo account shortcuts are development-only. Production self-registration is available only when SMTP, APP_BASE_URL, and PUBLIC_REGISTRATION_ENABLED=true are configured; accounts are not created until the institution email OTP is verified.
 - Use a unique administrator password. Do not use demo credentials for a real deployment.
 
 See `backend/README_QA.md` for backend setup and first-administrator bootstrap details.
@@ -132,8 +132,11 @@ FixIt supports separate institution workspaces. Each workspace owns its users, c
    }
    ```
 3. Provision its first college administrator from the same dashboard (or through `POST /api/institutions/{institution_id}/admins`). Use a strong temporary password and have the administrator change it immediately after first login. Platform Operations can suspend/reactivate workspaces; suspended institutions are blocked from login and API access.
-4. The college administrator signs in and configures campuses, buildings, blocks, floors, rooms, hostels and other locations from Campus Management. They can create students, faculty and support staff in their own institution only.
-5. Students can select their college workspace during development registration. The development registration endpoint checks that the email domain matches the selected institution, but domain matching alone does not prove mailbox ownership. Public registration is disabled in production; production student, faculty and staff accounts must be provisioned by a college administrator until an email-verification/invitation workflow is configured.
+4. The college administrator signs in and configures campuses, buildings, blocks, floors, rooms, hostels and other locations from Campus Management. They manage support staff and additional college administrators in their own institution.
+5. Students and faculty self-register at /register by selecting their college, entering their institutional email, identity details and password, then verifying a six-digit code delivered to that email. The API checks that the email domain is one of the institution's approved domains and creates the account only after successful verification. Students and faculty do not need the administrator to create accounts individually.
+6. Configure the institution's exact email domains during workspace creation (for example, students.example.edu and example.edu if both are genuinely used). The public institution list supplies the college selector. Personal email domains are rejected. Verification codes expire after 10 minutes, have a 60-second resend cooldown and a five-attempt limit.
+7. Production email verification requires PUBLIC_REGISTRATION_ENABLED=true, APP_BASE_URL, SMTP_HOST, SMTP_FROM_EMAIL (or SMTP_USERNAME), and valid SMTP credentials. The production frontend build must use VITE_PUBLIC_REGISTRATION_ENABLED=true. The supplied production Compose file enables the registration page.
+8. Staff and administrator accounts remain invitation/provisioning-only; the public form accepts only student and faculty roles. College email OTP proves control of an approved mailbox, not independently a person's current enrollment or job title. For stronger role assurance, use institution-issued role-specific email domains or an authoritative student/faculty directory and approval process.
 
 ### Tenant migration
 
