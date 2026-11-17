@@ -13,6 +13,7 @@ export const institutionService = {
   approveAdministratorRequest: (id, requestId) => api.post(`/institutions/${id}/admin-requests/${requestId}/approve`),
   rejectAdministratorRequest: (id, requestId) => api.post(`/institutions/${id}/admin-requests/${requestId}/reject`),
   updateAdministratorStatus: (id, userId, is_active) => api.patch(`/institutions/${id}/administrators/${userId}`, { is_active }),
+  makePrimaryAdministrator: (id, userId) => api.post(`/institutions/${id}/administrators/${userId}/make-primary`),
 };
 
 export const authService = {
