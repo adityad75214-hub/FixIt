@@ -62,6 +62,10 @@ export const campusService = {
   createFloor: (data) => api.post('/campus/floors', data),
   getRooms: (floorId, buildingId) => api.get('/campus/rooms', { params: { floor_id: floorId, building_id: buildingId } }),
   createRoom: (data) => api.post('/campus/rooms', data),
+  getBlocks: (buildingId) => api.get('/campus/blocks', { params: { building_id: buildingId } }),
+  createBlock: (data) => api.post('/campus/blocks', data),
+  getLocations: (params) => api.get('/campus/locations', { params }),
+  createLocation: (data) => api.post('/campus/locations', data),
 };
 
 export const slaService = {
