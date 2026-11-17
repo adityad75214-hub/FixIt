@@ -152,6 +152,18 @@ async def register(user_in: UserCreate, response: Response, request: Request):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Public registration is disabled. Contact your college IT administrator to request an account.")
     db = get_database()
 
+    # Resolve workspace from an approved institution slug; never accept a raw institution ID.
+    institution_id = "INST-DEFAULT"
+    if user_in.institution_slug:
+        institution = await db.institutions.find_one({"slug": user_in.institution_slug.lower(), "status": "active"})
+        if not institution:
+            raise HTTPException(status_code=400, detail="That college workspace was not found or is not active.")
+        domain = user_in.email.lower().rsplit("@", 1)[-1]
+        approved_domains = institution.get("email_domains", [])
+        if approved_domains and domain not in approved_domains:
+            raise HTTPException(status_code=403, detail="Use your college email address to join this institution.")
+        institution_id = str(institution["_id"])
+
     # Check if user already exists
     existing = await db.users.find_one({"email": user_in.email.lower()})
     if existing:
@@ -179,6 +191,7 @@ async def register(user_in: UserCreate, response: Response, request: Request):
         "identifier": user_in.identifier,
         "specialization": [],
         "is_active": True,
+        "institution_id": institution_id,
         "token_version": 0,
         "created_at": datetime.now(timezone.utc).isoformat()
     }
@@ -220,7 +233,8 @@ async def register(user_in: UserCreate, response: Response, request: Request):
         identifier=new_user["identifier"],
         specialization=[],
         is_active=True,
-        created_at=new_user["created_at"]
+        created_at=new_user["created_at"],
+        institution_id=institution_id
     )
     return Token(access_token=access_token, user=user_response)
 
