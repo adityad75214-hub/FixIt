@@ -1,4 +1,5 @@
 import uuid
+import re
 from datetime import datetime, timezone
 from datetime import timedelta
 from pymongo import ReturnDocument
@@ -413,7 +414,7 @@ async def update_my_profile(
         update_dict["department"] = update_data.department
     if update_data.avatar_url is not None:
         avatar = update_data.avatar_url.strip()
-        if avatar and not avatar.startswith("https://"):
+        if avatar and not (avatar.startswith("https://") or re.fullmatch(r"/api/uploads/[a-f0-9]{32}", avatar)):
             raise HTTPException(status_code=400, detail="Profile image URL must use HTTPS.")
         update_dict["avatar_url"] = avatar or None
     if update_data.specialization is not None and current_user["role"] in ["staff", "admin"]:
