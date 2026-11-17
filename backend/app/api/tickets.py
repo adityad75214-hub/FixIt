@@ -432,7 +432,7 @@ async def update_ticket_status(
     }
 
     update_result = await db.tickets.update_one(
-        {"_id": ticket["_id"], "status": old_status, "updated_at": ticket.get("updated_at")},
+        {"_id": ticket["_id"], "institution_id": institution_id_for(current_user), "status": old_status, "updated_at": ticket.get("updated_at")},
         {
             "$set": update_fields,
             "$push": {"timeline": timeline_event}
