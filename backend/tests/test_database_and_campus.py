@@ -230,6 +230,11 @@ def test_campus_and_ticket_data_are_isolated_between_institutions(client, admin_
     hidden_ticket = client.get(f"/api/tickets/{foreign_ticket_id}", headers=first_headers)
     assert hidden_ticket.status_code == 404
 
+    hidden_priority_update = client.put(f"/api/tickets/{foreign_ticket_id}/priority", headers=first_headers, json={"priority": "high", "reason": "tenant test"})
+    assert hidden_priority_update.status_code == 404
+    hidden_auto_assignment = client.post(f"/api/assignments/{foreign_ticket_id}/auto-assign", headers=first_headers)
+    assert hidden_auto_assignment.status_code == 404
+
 
 def test_platform_admin_can_onboard_college_and_provision_college_admin(client):
     import uuid
@@ -271,3 +276,27 @@ def test_platform_admin_can_onboard_college_and_provision_college_admin(client):
         "name": "Unauthorized College", "slug": f"unauthorized-{uuid.uuid4().hex[:6]}", "email_domains": []
     })
     assert denied.status_code == 403
+
+
+
+def test_suspended_institution_members_are_denied_api_access(client):
+    import uuid
+    from app.core.database import get_database
+    from app.core.security import create_access_token
+
+    db = get_database()
+    sync_db = db.sync_db
+    institution_id = f"INST-SUSP-{uuid.uuid4().hex[:8].upper()}"
+    sync_db.institutions.insert_one({
+        "_id": institution_id, "name": "Suspended College", "slug": f"suspended-{uuid.uuid4().hex[:6]}",
+        "status": "suspended", "email_domains": []
+    })
+    user_id = f"USR-{uuid.uuid4().hex[:10].upper()}"
+    sync_db.users.insert_one({
+        "_id": user_id, "email": f"user-{uuid.uuid4().hex[:6]}@suspended.edu",
+        "name": "Suspended User", "role": "student", "institution_id": institution_id,
+        "is_active": True, "token_version": 0, "created_at": "2026-01-01T00:00:00+00:00"
+    })
+    token = create_access_token({"sub": user_id, "role": "student", "ver": 0})
+    response = client.get("/api/campus", headers={"Authorization": f"Bearer {token}"})
+    assert response.status_code == 403
