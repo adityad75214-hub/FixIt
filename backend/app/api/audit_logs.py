@@ -2,6 +2,7 @@ from typing import List, Optional, Dict, Any
 from fastapi import APIRouter, Depends, Query
 from app.core.database import get_database
 from app.core.security import require_roles
+from app.core.tenancy import institution_id_for
 
 router = APIRouter(prefix="/audit-logs", tags=["Audit Logs"])
 
@@ -15,7 +16,7 @@ async def get_audit_logs(
     current_user: dict = Depends(require_roles("admin"))
 ):
     db = get_database()
-    query = {}
+    query = {"institution_id": institution_id_for(current_user)}
     if action:
         query["action"] = action
     if resource_type:
