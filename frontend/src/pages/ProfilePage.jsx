@@ -25,9 +25,9 @@ export default function ProfilePage() {
   useEffect(() => {
     let objectUrl;
     const avatar = profileData.avatar_url || '';
-    const uploadMatch = avatar.match(/^\\/api\\/uploads\\/([a-f0-9]{32})$/);
-    if (uploadMatch) {
-      authService.downloadUpload(uploadMatch[1]).then(res => {
+    const uploadId = avatar.startsWith('/api/uploads/') ? avatar.slice('/api/uploads/'.length) : '';
+    if (/^[a-f0-9]{32}$/.test(uploadId)) {
+      authService.downloadUpload(uploadId).then(res => {
         objectUrl = URL.createObjectURL(res.data);
         setAvatarPreview(objectUrl);
       }).catch(() => setAvatarUploadMsg('Could not load saved profile image.'));
