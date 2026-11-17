@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from app.core.database import get_database
 from app.core.security import get_current_user
 from app.core.audit import record_audit_log
+from app.core.tenancy import institution_id_for, scoped_filter
 from app.models.comment import CommentCreate, CommentResponse
 from app.services.notification_service import send_notification
 
@@ -16,7 +17,7 @@ async def list_ticket_comments(
     current_user: dict = Depends(get_current_user)
 ):
     db = get_database()
-    ticket = await db.tickets.find_one({"$or": [{"_id": ticket_id}, {"ticket_id": ticket_id}]})
+    ticket = await db.tickets.find_one(scoped_filter(current_user, {"$or": [{"_id": ticket_id}, {"ticket_id": ticket_id}]}))
     if not ticket:
         raise HTTPException(status_code=404, detail="Ticket not found")
 
@@ -29,7 +30,7 @@ async def list_ticket_comments(
     if user_role not in ("student", "faculty", "staff", "admin"):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Unsupported account role.")
 
-    query = {"ticket_id": ticket["ticket_id"]}
+    query = {"ticket_id": ticket["ticket_id"], "institution_id": institution_id_for(current_user)}
 
     # Students and Faculty MUST NEVER see internal notes
     if user_role in ("student", "faculty"):
@@ -89,6 +90,7 @@ async def add_comment(
     doc = {
         "_id": comment_id,
         "ticket_id": ticket["ticket_id"],
+        "institution_id": institution_id_for(current_user),
         "ticket_db_id": str(ticket["_id"]),
         "author": author_info,
         "content": comment_in.content,
@@ -107,7 +109,7 @@ async def add_comment(
     # Append timeline entry for public comments or note
     action_label = "INTERNAL_NOTE_ADDED" if comment_in.is_internal else "COMMENT_ADDED"
     await db.tickets.update_one(
-        {"_id": ticket["_id"]},
+        {"_id": ticket["_id"], "institution_id": institution_id_for(current_user)},
         {
             "$set": update_data,
             "$push": {
