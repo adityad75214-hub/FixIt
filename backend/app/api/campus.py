@@ -10,7 +10,7 @@ from app.models.campus import (
     BuildingResponse, BuildingCreate,
     FloorResponse, FloorCreate,
     RoomResponse, RoomCreate,
-    CampusHierarchyResponse
+    CampusHierarchyResponse, BlockCreate, BlockResponse, LocationCreate, LocationResponse
 )
 
 router = APIRouter(prefix="/campus", tags=["Campus Hierarchy"])
@@ -29,6 +29,8 @@ async def get_full_campus_hierarchy(current_user: dict = Depends(get_current_use
     buildings = await db.buildings.find({"is_active": True}).to_list(None)
     floors = await db.floors.find({"is_active": True}).to_list(None)
     rooms = await db.rooms.find({"is_active": True}).to_list(None)
+    blocks = await db.blocks.find({"is_active": True}).to_list(None)
+    locations = await db.campus_locations.find({"is_active": True, "location_type": "custom"}).to_list(None)
 
     # Nest floors into buildings and rooms into floors
     floors_by_building = {}
@@ -56,6 +58,14 @@ async def get_full_campus_hierarchy(current_user: dict = Depends(get_current_use
             "order": r.get("order", 0)
         })
 
+    blocks_by_building = {}
+    for block in blocks:
+        blocks_by_building.setdefault(block["building_id"], []).append({"id": str(block["_id"]), "name": block["name"], "code": block.get("code", ""), "order": block.get("order", 0)})
+    locations_by_parent = {}
+    for location in locations:
+        parent_id = location.get("floor_id") or location.get("block_id") or location.get("building_id") or location.get("campus_id")
+        locations_by_parent.setdefault(parent_id, []).append({"id": str(location["_id"]), "name": location["name"], "code": location.get("code"), "category": location["category"], "description": location.get("description"), "order": location.get("order", 0), "building_id": location.get("building_id"), "block_id": location.get("block_id"), "floor_id": location.get("floor_id")})
+
     result_buildings = []
     for b in buildings:
         b_id = str(b["_id"])
@@ -69,10 +79,12 @@ async def get_full_campus_hierarchy(current_user: dict = Depends(get_current_use
             "campus_id": b.get("campus_id"),
             "code": b.get("code", ""),
             "total_floors": b.get("total_floors", len(b_floors)),
-            "floors": sorted(b_floors, key=lambda x: x.get("order", 0))
+            "floors": sorted(b_floors, key=lambda x: x.get("order", 0)),
+            "blocks": sorted(blocks_by_building.get(b_id, []), key=lambda x: x.get("order", 0)),
+            "locations": locations_by_parent.get(b_id, [])
         })
 
-    return {"buildings": sorted(result_buildings, key=lambda x: x.get("name", ""))}
+    return {"buildings": sorted(result_buildings, key=lambda x: x.get("name", "")), "locations": [item for values in locations_by_parent.values() for item in values]}
 
 @router.post("", response_model=CampusResponse, status_code=status.HTTP_201_CREATED)
 async def create_campus(
@@ -221,3 +233,69 @@ async def create_room(
         raise HTTPException(status_code=409, detail="This room number already exists on the selected floor.") from None
     await record_audit_log(action="ROOM_CREATED", resource_type="room", resource_id=r_id, actor=current_user, details={"building_id": room_in.building_id, "floor_id": room_in.floor_id, "room_number": room_in.room_number})
     return RoomResponse(id=r_id, **room_in.model_dump())
+
+
+
+@router.get("/blocks", response_model=List[BlockResponse])
+async def list_blocks(building_id: Optional[str] = None, current_user: dict = Depends(get_current_user)):
+    db = get_database()
+    query = {"is_active": True}
+    if building_id:
+        query["building_id"] = building_id
+    docs = await db.blocks.find(query).sort("order", 1).to_list(None)
+    return [BlockResponse(id=str(d["_id"]), **{k: v for k, v in d.items() if k != "_id"}) for d in docs]
+
+
+@router.post("/blocks", response_model=BlockResponse, status_code=status.HTTP_201_CREATED)
+async def create_block(block_in: BlockCreate, current_user: dict = Depends(require_roles("admin"))):
+    db = get_database()
+    building = await db.buildings.find_one({"_id": block_in.building_id, "is_active": True})
+    if not building:
+        raise HTTPException(status_code=400, detail="Select an existing active building.")
+    block_id = f"BLK-{uuid.uuid4().hex[:8].upper()}"
+    doc = {"_id": block_id, **block_in.model_dump()}
+    try:
+        await db.blocks.insert_one(doc)
+    except DuplicateKeyError:
+        raise HTTPException(status_code=409, detail="A block with this code may already exist in the building.") from None
+    await record_audit_log(action="BLOCK_CREATED", resource_type="block", resource_id=block_id, actor=current_user, details={"building_id": block_in.building_id, "name": block_in.name})
+    return BlockResponse(id=block_id, **block_in.model_dump())
+
+
+@router.get("/locations", response_model=List[LocationResponse])
+async def list_custom_locations(campus_id: Optional[str] = None, building_id: Optional[str] = None, block_id: Optional[str] = None, floor_id: Optional[str] = None, current_user: dict = Depends(get_current_user)):
+    db = get_database()
+    query = {"is_active": True, "location_type": "custom"}
+    for key, value in (("campus_id", campus_id), ("building_id", building_id), ("block_id", block_id), ("floor_id", floor_id)):
+        if value:
+            query[key] = value
+    docs = await db.campus_locations.find(query).sort("order", 1).to_list(None)
+    return [LocationResponse(id=str(d["_id"]), **{k: v for k, v in d.items() if k not in ("_id", "location_type")}) for d in docs]
+
+
+@router.post("/locations", response_model=LocationResponse, status_code=status.HTTP_201_CREATED)
+async def create_custom_location(location_in: LocationCreate, current_user: dict = Depends(require_roles("admin"))):
+    db = get_database()
+    campus = await db.campuses.find_one({"_id": location_in.campus_id, "is_active": True})
+    if not campus:
+        raise HTTPException(status_code=400, detail="Select an existing active campus.")
+    if location_in.building_id:
+        building = await db.buildings.find_one({"_id": location_in.building_id, "campus_id": location_in.campus_id, "is_active": True})
+        if not building:
+            raise HTTPException(status_code=400, detail="The building does not belong to the selected campus.")
+    if location_in.block_id:
+        block = await db.blocks.find_one({"_id": location_in.block_id, "building_id": location_in.building_id, "is_active": True})
+        if not block:
+            raise HTTPException(status_code=400, detail="The block does not belong to the selected building.")
+    if location_in.floor_id:
+        floor = await db.floors.find_one({"_id": location_in.floor_id, "building_id": location_in.building_id, "is_active": True})
+        if not floor:
+            raise HTTPException(status_code=400, detail="The floor does not belong to the selected building.")
+    location_id = f"LOC-{uuid.uuid4().hex[:8].upper()}"
+    doc = {"_id": location_id, **location_in.model_dump(), "location_type": "custom"}
+    try:
+        await db.campus_locations.insert_one(doc)
+    except DuplicateKeyError:
+        raise HTTPException(status_code=409, detail="A location with this code may already exist.") from None
+    await record_audit_log(action="LOCATION_CREATED", resource_type="campus_location", resource_id=location_id, actor=current_user, details={"name": location_in.name, "category": location_in.category, "campus_id": location_in.campus_id})
+    return LocationResponse(id=location_id, **location_in.model_dump())
