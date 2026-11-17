@@ -303,7 +303,8 @@ async def login(credentials: UserLogin, request: Request, response: Response):
         specialization=user.get("specialization") or [],
         avatar_url=user.get("avatar_url"),
         is_active=user.get("is_active", True),
-        created_at=user.get("created_at", datetime.now(timezone.utc).isoformat())
+        created_at=user.get("created_at", datetime.now(timezone.utc).isoformat()),
+        institution_id=user.get("institution_id") or "INST-DEFAULT"
     )
     return Token(access_token=access_token, user=user_response)
 
@@ -410,7 +411,8 @@ async def get_my_profile(current_user: dict = Depends(get_current_user)):
         specialization=current_user.get("specialization") or [],
         avatar_url=current_user.get("avatar_url"),
         is_active=current_user.get("is_active", True),
-        created_at=current_user.get("created_at", "")
+        created_at=current_user.get("created_at", ""),
+        institution_id=current_user.get("institution_id") or "INST-DEFAULT"
     )
 
 @router.put("/profile", response_model=UserResponse)
@@ -451,7 +453,8 @@ async def update_my_profile(
         specialization=updated.get("specialization") or [],
         avatar_url=updated.get("avatar_url"),
         is_active=updated.get("is_active", True),
-        created_at=updated.get("created_at", "")
+        created_at=updated.get("created_at", ""),
+        institution_id=updated.get("institution_id") or "INST-DEFAULT"
     )
 
 @router.post("/change-password")
