@@ -30,6 +30,7 @@ const CampusManagementPage = lazy(() => import('./pages/CampusManagementPage'));
 const CategoryManagementPage = lazy(() => import('./pages/CategoryManagementPage'));
 const IncidentManagementPage = lazy(() => import('./pages/IncidentManagementPage'));
 const PlatformAdminDashboard = lazy(() => import('./pages/PlatformAdminDashboard'));
+const InstitutionAdminInvitationsPage = lazy(() => import('./pages/InstitutionAdminInvitationsPage'));
 const AcceptInvitationPage = lazy(() => import('./pages/AcceptInvitationPage'));
 
 const PUBLIC_REGISTRATION_ENABLED = import.meta.env.VITE_PUBLIC_REGISTRATION_ENABLED !== 'false';
@@ -102,6 +103,7 @@ export default function App() {
 
                 {/* Admin Only Routes */}
                 <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
+                  <Route path="/admin/administrators" element={<InstitutionAdminInvitationsPage />} />
                   <Route path="/users" element={<UserManagementPage />} />
                   <Route path="/admin/users" element={<UserManagementPage />} />
                   <Route path="/reports" element={<ReportsPage />} />
