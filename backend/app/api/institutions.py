@@ -16,14 +16,14 @@ router = APIRouter(prefix="/institutions", tags=["Institution Onboarding"])
 async def list_active_institutions():
     db = get_database()
     docs = await db.institutions.find({"status": "active"}).sort("name", 1).to_list(None)
-    return [InstitutionResponse(id=str(d["_id"]), name=d["name"], slug=d["slug"], email_domains=d.get("email_domains", []), status=d.get("status", "active")) for d in docs]
+    return [InstitutionResponse(id=str(d["_id"]), name=d["name"], slug=d["slug"], email_domains=d.get("email_domains", []), student_email_domains=d.get("student_email_domains", []), faculty_email_domains=d.get("faculty_email_domains", []), student_identifier_pattern=d.get("student_identifier_pattern"), faculty_identifier_pattern=d.get("faculty_identifier_pattern"), status=d.get("status", "active")) for d in docs]
 
 
 @router.get("/manage", response_model=list[InstitutionResponse])
 async def list_institutions_for_platform(current_user: dict = Depends(require_roles("platform_admin"))):
     db = get_database()
     docs = await db.institutions.find({}).sort("name", 1).to_list(None)
-    return [InstitutionResponse(id=str(d["_id"]), name=d["name"], slug=d["slug"], email_domains=d.get("email_domains", []), status=d.get("status", "active")) for d in docs]
+    return [InstitutionResponse(id=str(d["_id"]), name=d["name"], slug=d["slug"], email_domains=d.get("email_domains", []), student_email_domains=d.get("student_email_domains", []), faculty_email_domains=d.get("faculty_email_domains", []), student_identifier_pattern=d.get("student_identifier_pattern"), faculty_identifier_pattern=d.get("faculty_identifier_pattern"), status=d.get("status", "active")) for d in docs]
 
 
 @router.post("", response_model=InstitutionResponse, status_code=status.HTTP_201_CREATED)
@@ -57,7 +57,7 @@ async def create_institution(payload: InstitutionCreate, current_user: dict = De
             for item in default_policies
         ])
     await record_audit_log(action="INSTITUTION_CREATED", resource_type="institution", resource_id=institution_id, actor=current_user, details={"name": payload.name, "slug": payload.slug})
-    return InstitutionResponse(id=institution_id, name=payload.name, slug=payload.slug, email_domains=payload.email_domains, status="active")
+    return InstitutionResponse(id=institution_id, name=payload.name, slug=payload.slug, email_domains=payload.email_domains, student_email_domains=payload.student_email_domains, faculty_email_domains=payload.faculty_email_domains, student_identifier_pattern=payload.student_identifier_pattern, faculty_identifier_pattern=payload.faculty_identifier_pattern, status="active")
 
 
 @router.post("/{institution_id}/admins/invitations", status_code=status.HTTP_202_ACCEPTED)
@@ -204,4 +204,4 @@ async def update_institution(institution_id: str, payload: InstitutionUpdate, cu
         raise HTTPException(status_code=404, detail="Institution not found.")
     institution = await db.institutions.find_one({"_id": institution_id})
     await record_audit_log(action="INSTITUTION_UPDATED", resource_type="institution", resource_id=institution_id, actor=current_user, details={"updated_fields": sorted(update.keys())})
-    return InstitutionResponse(id=institution_id, name=institution["name"], slug=institution["slug"], email_domains=institution.get("email_domains", []), status=institution.get("status", "active"))
+    return InstitutionResponse(id=institution_id, name=institution["name"], slug=institution["slug"], email_domains=institution.get("email_domains", []), student_email_domains=institution.get("student_email_domains", []), faculty_email_domains=institution.get("faculty_email_domains", []), student_identifier_pattern=institution.get("student_identifier_pattern"), faculty_identifier_pattern=institution.get("faculty_identifier_pattern"), status=institution.get("status", "active"))
