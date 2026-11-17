@@ -27,9 +27,13 @@ class InstitutionResponse(BaseModel):
     status: str = "active"
 
 
-class InstitutionAdminCreate(BaseModel):
+class InstitutionAdminInvite(BaseModel):
     email: EmailStr = Field(..., max_length=254)
     name: str = Field(..., min_length=2, max_length=120)
+
+
+class InstitutionAdminInviteAccept(BaseModel):
+    token: str = Field(..., min_length=32, max_length=256)
     password: str = Field(..., min_length=12, max_length=128)
 
 
