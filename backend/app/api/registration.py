@@ -57,9 +57,20 @@ async def request_registration_code(payload: RegistrationRequest, request: Reque
     if not institution:
         raise HTTPException(status_code=404, detail="The selected institution is unavailable.")
 
-    allowed_domains = [str(domain).lower().lstrip("@") for domain in institution.get("email_domains", [])]
+    role_domains = institution.get(f"{payload.role}_email_domains") or institution.get("email_domains", [])
+    allowed_domains = [str(domain).lower().lstrip("@") for domain in role_domains]
     if not allowed_domains or _email_domain(email) not in allowed_domains:
-        raise HTTPException(status_code=403, detail="Use an email address from this institution's approved college email domain.")
+        raise HTTPException(status_code=403, detail=f"Use an approved {payload.role} email domain for this institution.")
+
+    identifier_pattern = institution.get(f"{payload.role}_identifier_pattern")
+    if identifier_pattern:
+        import re
+        try:
+            valid_identifier = re.fullmatch(identifier_pattern, payload.identifier.strip(), flags=re.IGNORECASE) is not None
+        except re.error:
+            raise HTTPException(status_code=500, detail="This institution's identifier rule is misconfigured. Contact its administrator.") from None
+        if not valid_identifier:
+            raise HTTPException(status_code=422, detail=f"The {payload.role} ID does not match this institution's required format.")
 
     if await db.users.find_one({"email": email}):
         raise HTTPException(status_code=409, detail="An account with this email already exists. Please sign in instead.")
@@ -146,7 +157,8 @@ async def verify_registration_code(payload: VerifyRegistrationCode, request: Req
         raise HTTPException(status_code=400, detail="Incorrect verification code.")
 
     institution = await db.institutions.find_one({"_id": pending["institution_id"], "status": "active"})
-    if not institution or _email_domain(email) not in [str(d).lower().lstrip("@") for d in institution.get("email_domains", [])]:
+    approved_domains = (institution.get(f"{pending['role']}_email_domains") or institution.get("email_domains", [])) if institution else []
+    if not institution or _email_domain(email) not in [str(d).lower().lstrip("@") for d in approved_domains]:
         await db.pending_registrations.delete_one({"_id": pending["_id"]})
         raise HTTPException(status_code=403, detail="Institution email verification is no longer valid.")
 
