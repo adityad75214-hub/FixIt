@@ -4,11 +4,13 @@ import { institutionService } from '../api/services';
 
 const emptyInstitution = { name: '', slug: '', email_domains: '' };
 const emptyAdmin = { email: '', name: '', password: '' };
+const emptyEdit = { name: '', email_domains: '' };
 
 export default function PlatformAdminDashboard() {
   const [institutions, setInstitutions] = useState([]);
   const [institutionForm, setInstitutionForm] = useState(emptyInstitution);
   const [adminForm, setAdminForm] = useState(emptyAdmin);
+  const [editForm, setEditForm] = useState(emptyEdit);
   const [selectedInstitution, setSelectedInstitution] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -78,6 +80,28 @@ export default function PlatformAdminDashboard() {
 
   const selected = institutions.find((item) => item.id === selectedInstitution);
 
+  useEffect(() => {
+    if (selected) setEditForm({ name: selected.name, email_domains: (selected.email_domains || []).join(', ') });
+    else setEditForm(emptyEdit);
+  }, [selectedInstitution, institutions]);
+
+  const updateInstitutionDetails = async (event) => {
+    event.preventDefault();
+    if (!selected) return;
+    setSaving(true); setError(''); setNotice('');
+    try {
+      const payload = {
+        name: editForm.name.trim(),
+        email_domains: editForm.email_domains.split(',').map((value) => value.trim().toLowerCase().replace(/^@/, '')).filter(Boolean),
+      };
+      const response = await institutionService.update(selected.id, payload);
+      setNotice(`Workspace details for ${response.data.name} updated.`);
+      await loadInstitutions();
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Workspace details could not be updated.');
+    } finally { setSaving(false); }
+  };
+
   return (
     <div className="page-wrapper">
       <div className="page-header">
@@ -142,6 +166,23 @@ export default function PlatformAdminDashboard() {
           </form>
         </section>
       </div>
+
+      <section className="card" style={{ marginTop: '1.25rem' }}>
+        <div className="card-header"><h2 className="card-title"><Building2 size={18} /> Edit selected workspace</h2></div>
+        {!selected ? <p>Select an active workspace to edit its details.</p> : (
+          <form onSubmit={updateInstitutionDetails}>
+            <div className="form-group">
+              <label className="form-label" htmlFor="edit-institution-name">Institution name</label>
+              <input id="edit-institution-name" className="form-control" required minLength={2} maxLength={160} value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} />
+            </div>
+            <div className="form-group">
+              <label className="form-label" htmlFor="edit-institution-domains">Approved email domains</label>
+              <input id="edit-institution-domains" className="form-control" value={editForm.email_domains} onChange={(e) => setEditForm({ ...editForm, email_domains: e.target.value })} placeholder="college.edu, students.college.edu" />
+            </div>
+            <button className="btn btn-primary" type="submit" disabled={saving}><RefreshCw size={16} /> {saving ? 'Saving…' : 'Save workspace details'}</button>
+          </form>
+        )}
+      </section>
 
       <section className="card" style={{ marginTop: '1.25rem' }}>
         <div className="card-header"><h2 className="card-title"><Building2 size={18} /> Registered institution workspaces</h2><span className="feature-status">{institutions.length} registered</span></div>
