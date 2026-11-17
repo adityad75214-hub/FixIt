@@ -26,8 +26,7 @@ class RegistrationRequest(BaseModel):
     institution_slug: str = Field(..., min_length=2, max_length=60)
     name: str = Field(..., min_length=2, max_length=120)
     email: EmailStr = Field(..., max_length=254)
-    password: str = Field(..., min_length=12, max_length=128)
-    role: str = Field(..., pattern="^(student|faculty)$")
+        role: str = Field(..., pattern="^(student|faculty)$")
     department: str = Field(..., min_length=2, max_length=100)
     identifier: str = Field(..., min_length=2, max_length=100)
     phone: str | None = Field(default=None, max_length=30)
@@ -36,6 +35,7 @@ class RegistrationRequest(BaseModel):
 class VerifyRegistrationCode(BaseModel):
     email: EmailStr
     code: str = Field(..., min_length=6, max_length=6, pattern=r"^\d{6}$")
+    password: str = Field(..., min_length=12, max_length=128)
 
 
 def _email_domain(email: str) -> str:
@@ -83,8 +83,7 @@ async def request_registration_code(payload: RegistrationRequest, request: Reque
         "institution_slug": institution["slug"],
         "name": payload.name.strip(),
         "email": email,
-        "password_hash": get_password_hash(payload.password),
-        "role": payload.role,
+                "role": payload.role,
         "department": payload.department.strip(),
         "identifier": payload.identifier.strip(),
         "phone": payload.phone,
@@ -159,7 +158,7 @@ async def verify_registration_code(payload: VerifyRegistrationCode, request: Req
     user = {
         "_id": user_id,
         "email": email,
-        "password_hash": pending["password_hash"],
+        "password_hash": get_password_hash(payload.password),
         "name": pending["name"],
         "role": pending["role"],
         "department": pending["department"],
@@ -170,6 +169,7 @@ async def verify_registration_code(payload: VerifyRegistrationCode, request: Req
         "email_verified": True,
         "email_verified_at": now.isoformat(),
         "approval_method": "institution_email_otp",
+        "membership_verification_status": "email_verified_pending_institution_check",
         "institution_id": pending["institution_id"],
         "token_version": 0,
         "created_at": now.isoformat(),
@@ -184,7 +184,7 @@ async def verify_registration_code(payload: VerifyRegistrationCode, request: Req
         resource_type="user",
         resource_id=user_id,
         actor={"id": user_id, "name": user["name"], "email": email, "role": user["role"], "institution_id": user["institution_id"]},
-        details={"institution_id": user["institution_id"], "verification_method": "institution_email_otp"},
+        details={"institution_id": user["institution_id"], "verification_method": "institution_email_otp", "membership_status": "email_verified_pending_institution_check"},
     )
 
     access_token = create_access_token(data={"sub": user_id, "role": user["role"], "ver": 0})
