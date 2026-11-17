@@ -184,7 +184,7 @@ async def update_user_by_admin(
 
     if update_dict:
         await db.users.update_one(scoped_filter(current_user, {"_id": user_id}), {"$set": update_dict})
-        user = await db.users.find_one({"_id": user_id})
+        user = await db.users.find_one(scoped_filter(current_user, {"_id": user_id}))
 
     await record_audit_log(
         action="USER_UPDATED_BY_ADMIN",
