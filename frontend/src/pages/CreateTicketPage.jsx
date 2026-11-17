@@ -484,6 +484,24 @@ export default function CreateTicketPage() {
     return [];
   }, [formData.category, categories]);
 
+  const handleDomainChange = (e) => {
+    const problem_domain = e.target.value;
+    const defaultCategoryByDomain = {
+      academic: 'Academic Support',
+      administrative: 'Administrative and Documentation',
+      facilities: 'Campus Facilities and Maintenance',
+      personal_support: 'Student and Community Support',
+      community: 'Student and Community Support',
+      other: 'Student and Community Support'
+    };
+    setFormData(prev => ({
+      ...prev,
+      problem_domain,
+      category: defaultCategoryByDomain[problem_domain] || prev.category,
+      subcategory: ''
+    }));
+  };
+
   const handleCategoryChange = (e) => {
     const newCategory = e.target.value;
     const oldSubcategory = formData.subcategory;
@@ -722,7 +740,7 @@ export default function CreateTicketPage() {
           <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.25rem' }}>
             <div className="form-group">
               <label className="form-label" htmlFor="problem-domain">What kind of help do you need? *</label>
-              <select id="problem-domain" name="problem_domain" className="form-control" value={formData.problem_domain} onChange={handleChange} required>
+              <select id="problem-domain" name="problem_domain" className="form-control" value={formData.problem_domain} onChange={handleDomainChange} required>
                 <option value="technical">Technical support</option>
                 <option value="academic">Academic and learning support</option>
                 <option value="administrative">Administrative and documentation</option>
