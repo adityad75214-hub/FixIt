@@ -75,6 +75,20 @@ async def request_registration_code(payload: RegistrationRequest, request: Reque
     if await db.users.find_one({"email": email}):
         raise HTTPException(status_code=409, detail="An account with this email already exists. Please sign in instead.")
 
+    identifier_query = {
+        "institution_id": str(institution["_id"]),
+        "role": payload.role,
+        "identifier": payload.identifier.strip(),
+    }
+    if await db.users.find_one(identifier_query):
+        raise HTTPException(status_code=409, detail=f"This {payload.role} ID is already registered in the selected institution.")
+
+    if await db.pending_registrations.find_one({
+        **identifier_query,
+        "email": {"$ne": email},
+    }):
+        raise HTTPException(status_code=409, detail=f"A registration for this {payload.role} ID is already pending verification.")
+
     now = datetime.now(timezone.utc)
     existing_pending = await db.pending_registrations.find_one({"email": email})
     if existing_pending:
@@ -162,6 +176,15 @@ async def verify_registration_code(payload: VerifyRegistrationCode, request: Req
         await db.pending_registrations.delete_one({"_id": pending["_id"]})
         raise HTTPException(status_code=403, detail="Institution email verification is no longer valid.")
 
+    duplicate_identifier = await db.users.find_one({
+        "institution_id": pending["institution_id"],
+        "role": pending["role"],
+        "identifier": pending["identifier"],
+    })
+    if duplicate_identifier:
+        await db.pending_registrations.delete_one({"_id": pending["_id"]})
+        raise HTTPException(status_code=409, detail=f"This {pending['role']} ID is already registered in the selected institution.")
+
     consumed = await db.pending_registrations.delete_one({"_id": pending["_id"], "code_hash": submitted_hash})
     if getattr(consumed, "deleted_count", 0) != 1:
         raise HTTPException(status_code=409, detail="This verification code has already been used. Request a new code.")
@@ -181,7 +204,8 @@ async def verify_registration_code(payload: VerifyRegistrationCode, request: Req
         "email_verified": True,
         "email_verified_at": now.isoformat(),
         "approval_method": "institution_email_otp",
-        "membership_verification_status": "email_verified_pending_institution_check",
+        "membership_verification_status": "email_verified",
+        "membership_verification_note": "College email domain and mailbox verified. No institution directory was available for a separate enrollment match.",
         "institution_id": pending["institution_id"],
         "token_version": 0,
         "created_at": now.isoformat(),
@@ -196,7 +220,7 @@ async def verify_registration_code(payload: VerifyRegistrationCode, request: Req
         resource_type="user",
         resource_id=user_id,
         actor={"id": user_id, "name": user["name"], "email": email, "role": user["role"], "institution_id": user["institution_id"]},
-        details={"institution_id": user["institution_id"], "verification_method": "institution_email_otp", "membership_status": "email_verified_pending_institution_check"},
+        details={"institution_id": user["institution_id"], "verification_method": "institution_email_otp", "membership_status": "email_verified"},
     )
 
     access_token = create_access_token(data={"sub": user_id, "role": user["role"], "ver": 0})
