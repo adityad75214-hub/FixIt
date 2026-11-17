@@ -44,6 +44,15 @@ describe('Language preferences', () => {
     expect(document.documentElement.lang).toBe('kn');
   });
 
+  it('translates shared support and notification labels in every regional language', () => {
+    const { rerender } = render(<LanguageProvider><LanguageHarness /></LanguageProvider>);
+    const expected = { hi: 'सूचनाएँ', kn: 'ಅಧಿಸೂಚನೆಗಳು', ta: 'அறிவிப்புகள்', te: 'నోటిఫికేషన్‌లు', ml: 'അറിയിപ്പുകൾ', mr: 'सूचना', bn: 'বিজ্ঞপ্তি' };
+    for (const [code, label] of Object.entries(expected)) {
+      localStorage.setItem('fixit_language', code);
+      rerender(<LanguageProvider><LanguageHarness /></LanguageProvider>);
+    }
+  });
+
   it('falls back to English for unsupported language codes', () => {
     render(
       <LanguageProvider>
