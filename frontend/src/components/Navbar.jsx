@@ -22,6 +22,7 @@ export default function Navbar({ onToggleSidebar }) {
     faculty: { label: t('Faculty'), bg: 'rgba(139, 92, 246, 0.12)', text: '#8B5CF6' },
     staff: { label: t('Support Staff'), bg: 'rgba(22, 163, 74, 0.12)', text: '#16A34A' },
     admin: { label: t('Administrator'), bg: 'rgba(220, 38, 38, 0.12)', text: '#DC2626' },
+    platform_admin: { label: 'Platform Admin', bg: 'rgba(15, 118, 110, 0.12)', text: '#0F766E' },
   };
 
   const roleStyle = roleLabels[user?.role] || roleLabels.student;
@@ -124,7 +125,8 @@ export default function Navbar({ onToggleSidebar }) {
               {user?.name}
             </div>
             <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-              {user?.department || t('Campus Community')}
+              <span title={user?.institution_name || 'FixIt Platform'}>{user?.institution_name || 'Campus Community'}</span>
+              {user?.department && user?.role !== 'platform_admin' && <span style={{ display: 'block', fontSize: '0.65rem' }}>{user.department}</span>}
             </div>
           </div>
 
