@@ -127,7 +127,7 @@ async def invite_institution_admin(institution_id: str, payload: InstitutionAdmi
         await db.admin_invitations.delete_one({"_id": invitation_id})
         raise HTTPException(status_code=502, detail="The invitation email could not be sent. No administrator account was created.") from None
 
-    await record_audit_log(action="INSTITUTION_ADMIN_INVITED", resource_type="institution", resource_id=institution_id, actor=current_user, details={"email": email, "invitation_id": invitation_id})
+    await record_audit_log(action="INSTITUTION_ADMIN_INVITED", resource_type="institution", resource_id=institution_id, actor={**current_user, "institution_id": institution_id}, details={"email": email, "invitation_id": invitation_id, "admin_level": invited_admin_level})
     return {"message": "Administrator invitation sent.", "email": email, "expires_in_hours": 48}
 
 
