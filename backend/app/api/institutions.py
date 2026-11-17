@@ -95,7 +95,7 @@ async def invite_institution_admin(institution_id: str, payload: InstitutionAdmi
     raw_token = __import__("secrets").token_urlsafe(48)
     now = datetime.now(timezone.utc)
     invitation_id = f"INV-{uuid.uuid4().hex[:12].upper()}"
-    active_admin_count = await db.users.count_documents({"institution_id": institution_id, "role": "admin", "is_active": True})
+    active_admin_count = await db.users.count_documents({"institution_id": institution_id, "role": "admin", "$or": [{"is_active": True}, {"is_active": {"$exists": False}}]})
     pending_primary = await db.admin_invitations.find_one({"institution_id": institution_id, "admin_level": "primary", "used_at": None, "expires_at": {"$gt": now}})
     invited_admin_level = "primary" if current_user.get("role") == "platform_admin" and active_admin_count == 0 and pending_primary is None else "college"
     invite = {
@@ -104,6 +104,8 @@ async def invite_institution_admin(institution_id: str, payload: InstitutionAdmi
         "name": payload.name,
         "role": "admin",
         "admin_level": invited_admin_level,
+        "department": payload.department or "Administration",
+        "designation": payload.designation,
         "institution_id": institution_id,
         "token_hash": hash_token(raw_token),
         "created_at": now,
@@ -152,7 +154,8 @@ async def accept_institution_admin_invitation(payload: InstitutionAdminInviteAcc
         "role": "admin",
         "admin_level": invite.get("admin_level", "college"),
         "institution_id": invite["institution_id"],
-        "department": "Administration",
+        "department": invite.get("department", "Administration"),
+        "designation": invite.get("designation"),
         "specialization": [],
         "is_active": True,
         "email_verified": True,
