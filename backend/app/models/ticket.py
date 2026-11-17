@@ -38,7 +38,7 @@ class TicketCreate(BaseModel):
     priority: Optional[TicketPriority] = TicketPriority.MEDIUM
     campus_id: Optional[str] = None
     building: str = Field(default="Not specified", min_length=1, max_length=100)
-    floor: Optional[str] = Field(default="Not specified", max_length=50)
+    floor: Optional[str] = Field(default="Ground", max_length=50)
     room: str = Field(default="Not specified", min_length=1, max_length=100)
     department: Optional[str] = Field(default=None, max_length=100)
     affected_users: Optional[int] = Field(default=1, ge=1, le=10000)
