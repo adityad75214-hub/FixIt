@@ -161,24 +161,10 @@ async def update_user_by_admin(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    if user.get("role") == "admin" and current_user.get("admin_level") != "primary":
-        if update_data.is_active is not None or update_data.role is not None:
-            raise HTTPException(status_code=403, detail="Only the Primary College Admin can change another administrator's access.")
+    if user.get("role") == "admin" and (update_data.is_active is not None or update_data.role is not None):
+        raise HTTPException(status_code=403, detail="Use Administrator Governance to transfer, deactivate, or reactivate administrator access.")
     if update_data.role is not None and update_data.role.value == "admin" and user.get("role") != "admin":
         raise HTTPException(status_code=403, detail="Administrator access must be granted through the invitation workflow.")
-
-    removes_active_admin = user.get("role") == "admin" and (
-        update_data.is_active is False or
-        (update_data.role is not None and update_data.role.value != "admin")
-    )
-    if user.get("admin_level") == "primary" and removes_active_admin:
-        raise HTTPException(status_code=409, detail="Transfer Primary College Admin ownership before changing this account.")
-    if removes_active_admin and user_id == current_user["id"]:
-        raise HTTPException(status_code=400, detail="You cannot deactivate or demote your own administrator account.")
-    if removes_active_admin:
-        active_admin_count = await db.users.count_documents({"institution_id": institution_id_for(current_user), "role": "admin", "$or": [{"is_active": True}, {"is_active": {"$exists": False}}]})
-        if active_admin_count <= 1:
-            raise HTTPException(status_code=409, detail="At least one active administrator account must remain.")
 
     if update_data.role is not None and update_data.role.value == "platform_admin":
         raise HTTPException(status_code=403, detail="College administrators cannot grant platform administrator access.")
