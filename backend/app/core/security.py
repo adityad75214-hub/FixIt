@@ -89,6 +89,13 @@ async def get_current_user(
     user.pop("password_hash", None)
     user["id"] = str(user.get("_id"))
     user["institution_id"] = str(user.get("institution_id") or "INST-DEFAULT")
+
+    # Suspended or deleted institution workspaces cannot continue using college data.
+    if user.get("role") != "platform_admin":
+        institution = await db.institutions.find_one({"_id": user["institution_id"]})
+        if not institution or institution.get("status", "active") != "active":
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="This institution workspace is suspended or unavailable. Contact FixIt platform operations.")
+
     return user
 
 def require_roles(*allowed_roles: str):
