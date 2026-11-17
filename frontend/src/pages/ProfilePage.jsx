@@ -209,7 +209,7 @@ export default function ProfilePage() {
 
       {/* Personal preferences */}
       <div className="card" style={{ marginBottom: '1.5rem' }}>
-        <h3 style={{ fontSize: '1rem', fontWeight: '600', color: 'var(--text-main)', marginBottom: '1rem' }> {t('Preferences')}</h3>
+        <h3 style={{ fontSize: '1rem', fontWeight: '600', color: 'var(--text-main)', marginBottom: '1rem' }}> {t('Preferences')}</h3>
         {preferencesMsg && <p role="status" style={{ color: 'var(--text-muted)', marginBottom: '0.75rem' }}>{preferencesMsg}</p>}
         <form onSubmit={handleSavePreferences}>
           <div className="form-group">
