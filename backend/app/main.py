@@ -51,7 +51,7 @@ async def lifespan(app: FastAPI):
         await seed_data()
 
     # Seed routines can create reference documents; attach any newly created legacy records too.
-    for collection_name in ("users", "tickets", "campuses", "buildings", "floors", "rooms", "blocks", "campus_locations", "incidents", "knowledge_base", "categories", "departments", "sla_policies", "comments", "feedback", "audit_logs", "feature_requests", "uploads"):
+    for collection_name in ("users", "tickets", "campuses", "buildings", "floors", "rooms", "blocks", "campus_locations", "incidents", "knowledge_base", "categories", "departments", "sla_policies", "comments", "feedback", "audit_logs", "feature_requests", "uploads", "notifications", "user_preferences", "knowledge_base_votes"):
         await db[collection_name].update_many({"institution_id": {"$exists": False}}, {"$set": {"institution_id": "INST-DEFAULT"}})
 
     yield
