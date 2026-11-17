@@ -44,7 +44,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
-    description="Centralized College IT Helpdesk and Campus Issue Management System REST API",
+    description="Flexible campus support, problem reporting, and issue resolution platform REST API",
     version="1.0.0",
     docs_url="/api/docs" if settings.DOCS_ENABLED and not settings.is_production else None,
     redoc_url="/api/redoc" if settings.DOCS_ENABLED and not settings.is_production else None,
