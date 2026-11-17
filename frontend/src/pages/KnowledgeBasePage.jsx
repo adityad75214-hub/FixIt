@@ -80,6 +80,13 @@ export default function KnowledgeBasePage() {
     setCreateModalOpen(true);
   };
 
+  const openCreateArticle = () => {
+    setEditingArticleId(null);
+    setArticleError('');
+    setNewArticle({ title: '', category: categories[0]?.name || '', content: '', tags: '', is_published: true });
+    setCreateModalOpen(true);
+  };
+
   const handleDeleteArticle = async (article) => {
     if (!window.confirm(`Delete “${article.title}”? This also removes its feedback votes.`)) return;
     try {
@@ -123,7 +130,7 @@ export default function KnowledgeBasePage() {
           <p className="page-subtitle">Find verified answers, guides, FAQs, and self-service help across all FixIt support categories</p>
         </div>
         {isStaffOrAdmin && (
-          <button className="btn btn-navy" onClick={() => setCreateModalOpen(true)}>
+          <button className="btn btn-navy" onClick={openCreateArticle}>
             <Plus size={16} /> New Article
           </button>
         )}
@@ -243,7 +250,7 @@ export default function KnowledgeBasePage() {
       {/* Create Article Modal (Staff/Admin) */}
       <Modal
         isOpen={createModalOpen}
-        onClose={() => { setCreateModalOpen(false); setEditingArticleId(null); setArticleError(''); }}
+        onClose={() => { setCreateModalOpen(false); setEditingArticleId(null); setArticleError(''); setNewArticle({ title: '', category: categories[0]?.name || '', content: '', tags: '', is_published: true }); }}
         title={editingArticleId ? 'Edit Knowledge Base Article' : 'Create Knowledge Base Article'}
         maxWidth="650px"
       >
@@ -301,8 +308,8 @@ export default function KnowledgeBasePage() {
           </div>
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1rem' }}>
-            <button type="button" className="btn btn-secondary" onClick={() => { setCreateModalOpen(false); setEditingArticleId(null); setArticleError(''); }}>Cancel</button>
-            <button type="submit" className="btn btn-navy" disabled={!newArticle.category}>Publish Article</button>
+            <button type="button" className="btn btn-secondary" onClick={() => { setCreateModalOpen(false); setEditingArticleId(null); setArticleError(''); setNewArticle({ title: '', category: categories[0]?.name || '', content: '', tags: '', is_published: true }); }}>Cancel</button>
+            <button type="submit" className="btn btn-navy" disabled={!newArticle.category}>{editingArticleId ? 'Save Changes' : (newArticle.is_published === false ? 'Save Draft' : 'Publish Article')}</button>
           </div>
         </form>
       </Modal>
