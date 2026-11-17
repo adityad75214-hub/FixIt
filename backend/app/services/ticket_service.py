@@ -93,7 +93,7 @@ async def validate_campus_location(building: str, floor: str, room: str, campus_
             configured_custom = await db.campus_locations.count_documents({"building_id": b_id, "is_active": True, "location_type": "custom"})
             if not settings.is_production and configured_rooms == 0 and configured_custom == 0:
                 return True, None, None
-            return False, f"Location '{room}' is not configured for floor '{floor}' in building '{building}'. Ask an administrator to add it.", None
+            return False, f"Location '{room}' is not valid for floor '{floor}' in building '{building}'. Ask an administrator to add it.", None
         return True, None, r_doc.get("department")
 
     # Legacy locations remain readable for existing installations during migration.
