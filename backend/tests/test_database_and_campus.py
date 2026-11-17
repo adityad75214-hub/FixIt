@@ -163,10 +163,11 @@ def test_campus_and_ticket_data_are_isolated_between_institutions(client, admin_
     from app.core.security import create_access_token
 
     db = get_database()
+    sync_db = db.sync_db
     institution_id = f"INST-TEST-{uuid.uuid4().hex[:8].upper()}"
-    db.institutions.insert_one({"_id": institution_id, "name": "Second College", "slug": f"second-{uuid.uuid4().hex[:6]}", "status": "active", "email_domains": []})
+    sync_db.institutions.insert_one({"_id": institution_id, "name": "Second College", "slug": f"second-{uuid.uuid4().hex[:6]}", "status": "active", "email_domains": []})
     second_admin_id = f"USR-{uuid.uuid4().hex[:10].upper()}"
-    db.users.insert_one({
+    sync_db.users.insert_one({
         "_id": second_admin_id, "email": f"admin-{uuid.uuid4().hex[:6]}@second.edu",
         "name": "Second College Admin", "role": "admin", "institution_id": institution_id,
         "is_active": True, "token_version": 0, "created_at": "2026-01-01T00:00:00+00:00"
@@ -190,7 +191,7 @@ def test_campus_and_ticket_data_are_isolated_between_institutions(client, admin_
     assert cross_building.status_code == 400
 
     foreign_ticket_id = f"TCK-{uuid.uuid4().hex[:10].upper()}"
-    db.tickets.insert_one({
+    sync_db.tickets.insert_one({
         "_id": foreign_ticket_id, "ticket_id": f"FOREIGN-{uuid.uuid4().hex[:6].upper()}",
         "institution_id": institution_id, "title": "Second college issue", "description": "Private issue",
         "category": "Facilities", "priority": "low", "status": "open", "building": "Hostel",
@@ -211,8 +212,9 @@ def test_platform_admin_can_onboard_college_and_provision_college_admin(client):
     from app.core.security import create_access_token
 
     db = get_database()
+    sync_db = db.sync_db
     platform_id = f"USR-PLATFORM-{uuid.uuid4().hex[:8].upper()}"
-    db.users.insert_one({
+    sync_db.users.insert_one({
         "_id": platform_id, "email": f"platform-{uuid.uuid4().hex[:6]}@fixit.example",
         "name": "Platform Operator", "role": "platform_admin", "institution_id": "INST-PLATFORM",
         "is_active": True, "token_version": 0, "created_at": "2026-01-01T00:00:00+00:00"
