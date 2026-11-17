@@ -128,7 +128,10 @@ async def download_file(
 
     if document.get("purpose") == "ticket":
         await _ticket_for_user(db, document.get("ticket_id", ""), current_user, for_upload=False)
-    elif document.get("purpose") != "profile":
+    elif document.get("purpose") == "profile":
+        if document.get("user_id") != current_user.get("id") and current_user.get("role") != "admin":
+            raise HTTPException(status_code=404, detail="File not found")
+    else:
         raise HTTPException(status_code=404, detail="File not found")
 
     content_type = document.get("content_type", "application/octet-stream")
