@@ -82,3 +82,14 @@ class InstitutionUpdate(BaseModel):
             result.append(domain)
         return sorted(set(result))
 
+    @field_validator("student_identifier_pattern", "faculty_identifier_pattern")
+    @classmethod
+    def validate_identifier_patterns(cls, value):
+        if value is None or value == "":
+            return value
+        try:
+            re.compile(value)
+        except re.error as exc:
+            raise ValueError("Enter a valid identifier regular expression.") from exc
+        return value
+
