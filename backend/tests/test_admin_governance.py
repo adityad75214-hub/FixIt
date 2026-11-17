@@ -100,7 +100,7 @@ def test_platform_invitation_assigns_first_primary_admin(client, monkeypatch):
     import app.services.notification_service as mailer
 
     monkeypatch.setattr(settings, "SMTP_HOST", "smtp.test")
-    monkeypatch.setattr(settings, "SMTP_FROM_EMAIL", "noreply@fixit.test")
+    monkeypatch.setattr(settings, "SMTP_FROM_EMAIL", "noreply@fixit.example")
     monkeypatch.setattr(settings, "APP_BASE_URL", "https://fixit.test")
     sent = {}
     monkeypatch.setattr(mailer, "_send_email", lambda recipient, subject, body: sent.update(recipient=recipient, body=body))
@@ -114,7 +114,7 @@ def test_platform_invitation_assigns_first_primary_admin(client, monkeypatch):
     })
     platform_id = f"USR-PLATFORM-{uuid.uuid4().hex[:8]}"
     db.users.insert_one({
-        "_id": platform_id, "email": f"platform-{uuid.uuid4().hex[:6]}@fixit.test",
+        "_id": platform_id, "email": f"platform-{uuid.uuid4().hex[:6]}@fixit.example",
         "name": "Platform Operator", "role": "platform_admin",
         "is_active": True, "token_version": 0,
     })
