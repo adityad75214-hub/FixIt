@@ -30,6 +30,16 @@ async def main() -> None:
     try:
         await client.admin.command("ping")
         db = client[settings.DATABASE_NAME]
+
+        # This bootstrap command is deliberately one-time. Additional platform
+        # operators must be provisioned through a separately audited process.
+        existing_platform_admin = await db.users.find_one({"role": "platform_admin"})
+        if existing_platform_admin:
+            raise SystemExit(
+                "A platform administrator already exists. Bootstrap is disabled; "
+                "do not create another platform administrator with this script."
+            )
+
         existing = await db.users.find_one({"email": email})
         if existing:
             raise SystemExit("An account with that email already exists; no changes were made.")
