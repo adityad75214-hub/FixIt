@@ -7,6 +7,7 @@ class CategoryBase(BaseModel):
     subcategories: List[str] = Field(default_factory=list, max_length=100)
     is_active: bool = True
     icon: Optional[str] = Field(default="Wrench", max_length=40)
+    service_department: Optional[str] = Field(default=None, min_length=2, max_length=100)
 
     @field_validator("name")
     @classmethod
