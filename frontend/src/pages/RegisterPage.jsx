@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Wrench, User, Mail, Lock, Building, Phone, Hash, AlertCircle, ArrowRight } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { institutionService } from '../api/services';
 
 export default function RegisterPage() {
   const [formData, setFormData] = useState({
@@ -11,12 +12,21 @@ export default function RegisterPage() {
     role: 'student',
     department: 'Computer Science',
     phone: '',
-    identifier: ''
+    identifier: '',
+    institution_slug: ''
   });
+  const [institutions, setInstitutions] = useState([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { register } = useAuth();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    institutionService.list().then(({ data }) => {
+      setInstitutions(data || []);
+      if (data?.length === 1) setFormData((current) => ({ ...current, institution_slug: data[0].slug }));
+    }).catch(() => setInstitutions([]));
+  }, []);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -65,7 +75,7 @@ export default function RegisterPage() {
           </Link>
           <h2 style={{ fontSize: '1.35rem', fontWeight: '700', color: 'var(--text-main)' }}>Create your campus support account</h2>
           <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
-            Report technical problems and track resolution progress
+            Report campus issues and track support across your college
           </p>
         </div>
 
@@ -120,6 +130,14 @@ export default function RegisterPage() {
               </div>
             </div>
 
+            <div className="form-group">
+              <label className="form-label" htmlFor="institution_slug">College / Institution</label>
+              <select id="institution_slug" name="institution_slug" className="form-control" value={formData.institution_slug} onChange={handleChange} required>
+                <option value="">Select your college workspace</option>
+                {institutions.map((institution) => <option key={institution.id} value={institution.slug}>{institution.name}</option>)}
+              </select>
+              <small style={{ color: 'var(--text-muted)' }}>Use your official college email. Some institutions require an administrator-issued account.</small>
+            </div>
             <div className="form-group">
               <label className="form-label">Full Name</label>
               <input
