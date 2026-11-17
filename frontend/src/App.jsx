@@ -32,7 +32,7 @@ const IncidentManagementPage = lazy(() => import('./pages/IncidentManagementPage
 const PlatformAdminDashboard = lazy(() => import('./pages/PlatformAdminDashboard'));
 const AcceptInvitationPage = lazy(() => import('./pages/AcceptInvitationPage'));
 
-const PUBLIC_REGISTRATION_ENABLED = import.meta.env.DEV && import.meta.env.VITE_PUBLIC_REGISTRATION_ENABLED !== 'false';
+const PUBLIC_REGISTRATION_ENABLED = import.meta.env.VITE_PUBLIC_REGISTRATION_ENABLED !== 'false';
 
 // Layout wrapper for authenticated users
 function AppLayout() {
