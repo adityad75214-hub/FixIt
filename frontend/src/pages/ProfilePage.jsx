@@ -4,7 +4,7 @@ import { User, Lock, CheckCircle2, AlertCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { authService } from '../api/services';
 import { useTheme } from '../context/ThemeContext';
-import { useLanguage } from '../context/LanguageContext';
+import { useLanguage, LANGUAGE_OPTIONS } from '../context/LanguageContext';
 
 export default function ProfilePage() {
   const { user, refreshUser, logout } = useAuth();
@@ -222,10 +222,9 @@ export default function ProfilePage() {
           <div className="form-group">
             <label className="form-label">{t('Preferred language')}</label>
             <select className="form-control" value={preferences.language} onChange={(e) => setPreferences({ ...preferences, language: e.target.value })}>
-              <option value="en">{t('English')}</option>
-              <option value="hi">हिन्दी</option>
+              {LANGUAGE_OPTIONS.map(({ value, nativeLabel }) => <option key={value} value={value}>{nativeLabel}</option>)}
             </select>
-            <small style={{ color: 'var(--text-muted)' }}>Saved as your language preference; full interface translation is a separate localization task.</small>
+            <small style={{ color: 'var(--text-muted)' }}>Choose your preferred interface language. Some less-used screens may still display English while translation coverage expands.</small>
           </div>
           <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.75rem' }}>
             <input type="checkbox" checked={preferences.in_app_notifications} onChange={(e) => setPreferences({ ...preferences, in_app_notifications: e.target.checked })} />
