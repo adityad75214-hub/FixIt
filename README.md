@@ -1,6 +1,22 @@
 # FixIt — College IT Helpdesk & Campus Issue Management System
 
-FixIt is a single-college issue and IT helpdesk platform for students, faculty, IT staff, and administrators.
+FixIt is a flexible issue-intake and resolution platform for students, faculty, staff, and administrators. It starts with campus IT helpdesk workflows and also supports academic, administrative, facilities, student-support, community, and other requests.
+
+## Supported request domains
+
+The ticket workflow supports these request domains:
+
+- **Technical:** devices, software, accounts, connectivity, and IT services.
+- **Academic:** learning support, subject guidance, project support, and academic resources.
+- **Administrative:** forms, documentation, campus processes, and service enquiries.
+- **Facilities:** maintenance, utilities, classroom equipment, and campus infrastructure.
+- **Student support:** guidance and requests that should be routed to an appropriate, authorized support team.
+- **Community:** shared concerns and community assistance.
+- **Other:** requests that do not fit a listed domain.
+
+Each request can be associated with a campus location, an online/remote context, or no specific location. Campus-located tickets continue to use the configured campus/building/floor/room hierarchy. Remote and location-independent tickets use the same authentication, assignment, status, notification, audit, and SLA workflow without requiring campus coordinates.
+
+The domain is a routing classification, not a promise that FixIt itself can provide every specialist service. Sensitive or high-risk requests must be routed to trained, authorized people; the platform should not present automated responses as medical, legal, financial, or emergency advice.
 
 ## Project structure
 
