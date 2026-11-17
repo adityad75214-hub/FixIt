@@ -16,6 +16,11 @@ async def seed_reference_data() -> None:
         {"name": "Software and Applications", "subcategories": ["MATLAB / AutoCAD License Error", "OS Crashing / Blue Screen", "Antivirus Blocked App", "LMS Portal Login Error", "Software Installation Request"], "icon": "Code"},
         {"name": "Laboratory Equipment", "subcategories": ["Microcontroller Programmer Fault", "Oscilloscope Power Supply", "Server Rack Power Issue", "Lab Workstation Unresponsive"], "icon": "Cpu"},
         {"name": "Account and Login", "subcategories": ["Forgot Password", "Account Locked", "Two-Factor Auth Reset", "ID Card NFC Access Denied"], "icon": "Shield"},
+        {"name": "Academic Support", "subcategories": ["Subject Guidance", "Course / Syllabus Query", "Assignment Support", "Project Guidance", "Research Guidance", "Laboratory Learning Support", "Study Resources", "Exam Preparation"], "icon": "GraduationCap"},
+        {"name": "Career and Placement Guidance", "subcategories": ["Resume Review", "Interview Preparation", "Internship Guidance", "Placement Support", "Higher Studies Guidance", "Career Counselling"], "icon": "Briefcase"},
+        {"name": "Administrative and Documentation", "subcategories": ["Bonafide Certificate", "Transcript / Marksheet", "Scholarship Query", "Fee / Payment Query", "Admission / Enrollment", "ID Card", "Official Records", "General Office Enquiry"], "icon": "FileText"},
+        {"name": "Campus Facilities and Maintenance", "subcategories": ["Hostel / Accommodation", "Transport", "Drinking Water", "Washroom / Sanitation", "Electricity / Lighting", "Furniture", "Cleaning / Waste Management", "Accessibility", "Safety / Security"], "icon": "Building"},
+        {"name": "Student and Community Support", "subcategories": ["Student Guidance", "Peer Support", "Accessibility Assistance", "Community Concern", "Volunteer Assistance", "Other Support Request"], "icon": "HeartHandshake"},
     ]
     for category in categories:
         doc = {
