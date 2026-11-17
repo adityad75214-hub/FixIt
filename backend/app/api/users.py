@@ -100,6 +100,8 @@ async def create_user_by_admin(
     current_user: dict = Depends(require_roles("admin"))
 ):
     db = get_database()
+    if user_in.role.value == "platform_admin":
+        raise HTTPException(status_code=403, detail="Platform administrator accounts can only be provisioned through the platform operations process.")
     existing = await db.users.find_one({"email": user_in.email.lower()})
     if existing:
         raise HTTPException(status_code=400, detail="User with this email already exists")
@@ -167,6 +169,9 @@ async def update_user_by_admin(
         active_admin_count = await db.users.count_documents({"role": "admin", "$or": [{"is_active": True}, {"is_active": {"$exists": False}}]})
         if active_admin_count <= 1:
             raise HTTPException(status_code=409, detail="At least one active administrator account must remain.")
+
+    if update_data.role is not None and update_data.role.value == "platform_admin":
+        raise HTTPException(status_code=403, detail="College administrators cannot grant platform administrator access.")
 
     update_dict = {}
     if update_data.name is not None:
