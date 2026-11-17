@@ -8,6 +8,8 @@ export const authService = {
   refresh: () => api.post('/auth/refresh'),
   updateProfile: (data) => api.put('/auth/profile', data),
   changePassword: (data) => api.post('/auth/change-password', data),
+  getPreferences: () => api.get('/auth/preferences'),
+  updatePreferences: (data) => api.put('/auth/preferences', data),
 };
 
 export const ticketService = {
