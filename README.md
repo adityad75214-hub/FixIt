@@ -1,4 +1,4 @@
-# FixIt — College IT Helpdesk & Campus Issue Management System
+# FixIt — Campus Support Platform
 
 FixIt is a flexible issue-intake and resolution platform for students, faculty, staff, and administrators. It starts with campus IT helpdesk workflows and also supports academic, administrative, facilities, student-support, community, and other requests.
 
