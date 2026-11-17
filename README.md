@@ -123,7 +123,7 @@ FixIt supports separate institution workspaces. Each workspace owns its users, c
 1. Bootstrap the first platform operator from the backend directory:
    `python scripts/create_platform_admin.py`
    The script prompts for the email, name and password and creates a `platform_admin` account. Keep this account restricted to FixIt platform operations.
-2. Sign in and create an institution through `POST /api/institutions` with a name, unique slug and approved email domains. Example:
+2. Sign in to the **Platform Operations** dashboard at `/platform/institutions` and create an institution workspace. The equivalent API is `POST /api/institutions` with a name, unique slug and approved email domains. Example:
    ```json
    {
      "name": "Example College",
@@ -131,9 +131,9 @@ FixIt supports separate institution workspaces. Each workspace owns its users, c
      "email_domains": ["example.edu"]
    }
    ```
-3. Provision its first college administrator through `POST /api/institutions/{institution_id}/admins`. Use a strong one-time password and have the administrator change it after first login.
+3. Provision its first college administrator from the same dashboard (or through `POST /api/institutions/{institution_id}/admins`). Use a strong temporary password and have the administrator change it immediately after first login. Platform Operations can suspend/reactivate workspaces; suspended institutions are blocked from login and API access.
 4. The college administrator signs in and configures campuses, buildings, blocks, floors, rooms, hostels and other locations from Campus Management. They can create students, faculty and support staff in their own institution only.
-5. Students can select their college workspace during development registration. When an institution has approved email domains, the backend checks the email domain. Institutions without configured domains require administrator-provisioned accounts.
+5. Students can select their college workspace during development registration. The development registration endpoint checks that the email domain matches the selected institution, but domain matching alone does not prove mailbox ownership. Public registration is disabled in production; production student, faculty and staff accounts must be provisioned by a college administrator until an email-verification/invitation workflow is configured.
 
 ### Tenant migration
 
