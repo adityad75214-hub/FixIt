@@ -21,9 +21,9 @@ The domain is a routing classification, not a promise that FixIt itself can prov
 ## Included user-facing features
 
 - **Notifications:** authenticated in-app alerts, read/unread state, and per-user notification preferences. Email delivery is optional and requires SMTP configuration.
-- **Profiles:** editable name, department, phone, and HTTPS profile-image URL; password changes revoke existing sessions.
+- **Profiles:** editable name, department, phone, HTTPS profile-image URL or uploaded profile picture; password changes revoke existing sessions.
 - **Preferences:** light/dark appearance, saved English/Hindi language preference, and in-app/email notification toggles. The language preference is stored; full translated UI strings are not yet implemented.
-- **Ticket conversations:** ticket-specific replies, staff-only internal notes, chronological history, and up to five secure HTTPS attachment links per message. Attachments are linked from an external file host; binary file upload/storage is not part of this implementation.
+- **Ticket conversations:** ticket-specific replies, staff-only internal notes, chronological history, and up to five uploaded attachments per message. Authenticated uploads support JPG, PNG, WEBP, GIF, PDF and TXT files up to 5 MB each. Files are stored in MongoDB and downloads are authorized against the user's ticket access.
 - **Knowledge base:** searchable articles, FAQs, categories, helpfulness feedback, and staff/admin article management across support topics.
 
 ### Optional email delivery
