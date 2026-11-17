@@ -1,5 +1,5 @@
 from typing import List, Optional
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, EmailStr, Field, field_validator
 
 
 class InstitutionCreate(BaseModel):
@@ -28,7 +28,7 @@ class InstitutionResponse(BaseModel):
 
 
 class InstitutionAdminCreate(BaseModel):
-    email: str = Field(..., min_length=5, max_length=254)
+    email: EmailStr = Field(..., max_length=254)
     name: str = Field(..., min_length=2, max_length=120)
     password: str = Field(..., min_length=12, max_length=128)
 
