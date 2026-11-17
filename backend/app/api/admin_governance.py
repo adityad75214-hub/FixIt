@@ -229,8 +229,9 @@ async def update_administrator_status(
         return {"message": "No change required.", "is_active": payload.is_active}
     await db.users.update_one(
         {"_id": user_id, "institution_id": institution_id, "role": "admin", "admin_level": {"$ne": "primary"}},
-        {"$set": {"is_active": payload.is_active, "updated_at": datetime.now(timezone.utc).isoformat()}},
+        {"$set": {"is_active": payload.is_active, "updated_at": datetime.now(timezone.utc).isoformat()}, "$inc": {"token_version": 1}},
     )
+    await db.refresh_tokens.delete_many({"user_id": user_id})
     await record_audit_log(
         action="INSTITUTION_ADMIN_ACTIVATED" if payload.is_active else "INSTITUTION_ADMIN_DEACTIVATED",
         resource_type="user", resource_id=user_id, actor=current_user,
