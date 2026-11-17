@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field, field_validator
 from app.core.database import get_database
 from app.core.security import get_current_user, require_roles
 from app.core.audit import record_audit_log
+from app.core.tenancy import institution_id_for, scoped_filter
 
 router = APIRouter(prefix="/feature-requests", tags=["Feature Requests & Roadmap"])
 
@@ -59,6 +60,7 @@ async def submit_feature_request(
     request_id = f"FTR-{uuid.uuid4().hex[:10].upper()}"
     doc = {
         "_id": request_id,
+        "institution_id": institution_id_for(current_user),
         "title": payload.title.strip(),
         "description": payload.description.strip(),
         "area": payload.area.strip(),
@@ -86,7 +88,9 @@ async def submit_feature_request(
 @router.get("")
 async def list_feature_requests(current_user: dict = Depends(get_current_user)):
     db = get_database()
-    query = {} if current_user.get("role") == "admin" else {"created_by.id": current_user["id"]}
+    query = {"institution_id": institution_id_for(current_user)}
+    if current_user.get("role") != "admin":
+        query["created_by.id"] = current_user["id"]
     docs = await db.feature_requests.find(query).sort("created_at", -1).to_list(None)
     return [_serialize(doc, include_admin_note=current_user.get("role") == "admin") for doc in docs]
 
@@ -100,10 +104,10 @@ async def update_feature_request(
     db = get_database()
     now = datetime.now(timezone.utc).isoformat()
     update = {"status": payload.status, "admin_note": payload.admin_note.strip() if payload.admin_note else None, "updated_at": now}
-    result = await db.feature_requests.update_one({"_id": request_id}, {"$set": update})
+    result = await db.feature_requests.update_one(scoped_filter(current_user, {"_id": request_id}), {"$set": update})
     if not result.matched_count:
         raise HTTPException(status_code=404, detail="Feature request not found")
-    doc = await db.feature_requests.find_one({"_id": request_id})
+    doc = await db.feature_requests.find_one(scoped_filter(current_user, {"_id": request_id}))
     await record_audit_log(
         action="FEATURE_REQUEST_UPDATED",
         resource_type="feature_request",
