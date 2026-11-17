@@ -9,6 +9,7 @@ from app.core.security import get_current_user, require_roles
 from app.core.audit import record_audit_log
 from app.models.knowledge_base import KBArticleResponse, KBArticleCreate, KBArticleUpdate
 from app.models.vote import ArticleVote
+from app.core.tenancy import institution_id_for, scoped_filter
 
 router = APIRouter(prefix="/knowledge-base", tags=["Knowledge Base & FAQ"])
 
@@ -20,7 +21,7 @@ async def list_articles(
     current_user: dict = Depends(get_current_user)
 ):
     db = get_database()
-    query = {"is_published": True}
+    query = {"is_published": True, "institution_id": institution_id_for(current_user)}
     if category:
         query["category"] = category
     if tag:
@@ -83,12 +84,12 @@ async def get_article_detail(
     current_user: dict = Depends(get_current_user)
 ):
     db = get_database()
-    article = await db.knowledge_base.find_one({"_id": article_id})
+    article = await db.knowledge_base.find_one(scoped_filter(current_user, {"_id": article_id}))
     if not article or (not article.get("is_published", True) and current_user.get("role") not in ("staff", "admin")):
         raise HTTPException(status_code=404, detail="Article not found")
 
     # Increment view count
-    await db.knowledge_base.update_one({"_id": article_id}, {"$inc": {"views": 1}})
+    await db.knowledge_base.update_one({"_id": article_id, "institution_id": institution_id_for(current_user)}, {"$inc": {"views": 1}})
     article["views"] = article.get("views", 0) + 1
 
     return KBArticleResponse(
@@ -114,7 +115,7 @@ async def vote_article(
     current_user: dict = Depends(get_current_user)
 ):
     db = get_database()
-    article = await db.knowledge_base.find_one({"_id": article_id, "is_published": True})
+    article = await db.knowledge_base.find_one(scoped_filter(current_user, {"_id": article_id, "is_published": True}))
     if not article:
         raise HTTPException(status_code=404, detail="Article not found")
     is_helpful = vote_in.helpful if vote_in is not None else (helpful if helpful is not None else True)
@@ -148,7 +149,7 @@ async def create_article(
     article_id = f"KB-{uuid.uuid4().hex[:8].upper()}"
 
     doc = {
-        "_id": article_id,
+        "_id": article_id,\n        "institution_id": institution_id_for(current_user),
         "title": article_in.title,
         "category": article_in.category,
         "content": article_in.content,
@@ -224,7 +225,7 @@ async def delete_article(
     if not article:
         raise HTTPException(status_code=404, detail="Article not found")
     await db.knowledge_base.delete_one({"_id": article_id})
-    await db.knowledge_base_votes.delete_many({"article_id": article_id})
+    await db.knowledge_base_votes.delete_many({"article_id": article_id, "institution_id": institution_id_for(current_user)})
     await record_audit_log(
         action="KB_ARTICLE_DELETED",
         resource_type="knowledge_base",
