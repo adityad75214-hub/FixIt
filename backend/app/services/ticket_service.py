@@ -57,11 +57,12 @@ async def validate_campus_location(building: str, floor: str, room: str, campus_
         b_id = str(b_doc["_id"])
         f_doc = await db.floors.find_one({
             "building_id": b_id,
+            **({"institution_id": institution_id} if institution_id else {}),
             "floor_name": {"$regex": f"^{re.escape(floor.strip())}$", "$options": "i"},
             "is_active": True,
         })
         if not f_doc:
-            configured_floors = await db.floors.count_documents({"building_id": b_id, "is_active": True})
+            configured_floors = await db.floors.count_documents({"building_id": b_id, "is_active": True, **({"institution_id": institution_id} if institution_id else {})})
             if not settings.is_production and configured_floors == 0:
                 return True, None, None
             return False, f"Floor '{floor}' does not exist in building '{building}'. Ask an administrator to add it.", None
@@ -70,6 +71,7 @@ async def validate_campus_location(building: str, floor: str, room: str, campus_
         r_doc = await db.rooms.find_one({
             "floor_id": f_id,
             "building_id": b_id,
+            **({"institution_id": institution_id} if institution_id else {}),
             "is_active": True,
             "$or": [
                 {"room_number": {"$regex": f"^{re.escape(room.strip())}$", "$options": "i"}},
@@ -89,8 +91,8 @@ async def validate_campus_location(building: str, floor: str, room: str, campus_
             })
             if custom_location:
                 return True, None, None
-            configured_rooms = await db.rooms.count_documents({"floor_id": f_id, "is_active": True})
-            configured_custom = await db.campus_locations.count_documents({"building_id": b_id, "is_active": True, "location_type": "custom"})
+            configured_rooms = await db.rooms.count_documents({"floor_id": f_id, "is_active": True, **({"institution_id": institution_id} if institution_id else {})})
+            configured_custom = await db.campus_locations.count_documents({"building_id": b_id, "is_active": True, "location_type": "custom", **({"institution_id": institution_id} if institution_id else {})})
             if not settings.is_production and configured_rooms == 0 and configured_custom == 0:
                 return True, None, None
             return False, f"Location '{room}' is not valid for floor '{floor}' in building '{building}'. Ask an administrator to add it.", None
@@ -98,6 +100,7 @@ async def validate_campus_location(building: str, floor: str, room: str, campus_
 
     # Legacy locations remain readable for existing installations during migration.
     loc_doc = await db.campus_locations.find_one({
+        **({"institution_id": institution_id} if institution_id else {}),
         "building": {"$regex": f"^{re.escape(building.strip())}$", "$options": "i"},
         "is_active": True,
     })
