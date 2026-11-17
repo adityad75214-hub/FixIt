@@ -16,7 +16,9 @@ const initialForm = {
 };
 
 export default function RegisterPage() {
-  const [formData, setFormData] = useState(initialForm);
+  const requestedRole = new URLSearchParams(window.location.search).get('role');
+  const startingRole = ['student', 'faculty'].includes(requestedRole) ? requestedRole : 'student';
+  const [formData, setFormData] = useState({ ...initialForm, role: startingRole });
   const [institutions, setInstitutions] = useState([]);
   const [step, setStep] = useState('details');
   const [code, setCode] = useState('');
