@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 from app.core.database import get_database
 from app.core.security import get_current_user, require_roles
 from app.core.audit import record_audit_log
+from app.core.tenancy import institution_id_for, scoped_filter
 from app.models.ticket import (
     TicketCreate,
     TicketResponse,
@@ -87,7 +88,7 @@ async def check_duplicates(payload: DuplicateCheckRequest, current_user: dict = 
     building = payload.building
     room = payload.room
     campus_id = payload.campus_id
-    duplicates = await detect_potential_duplicates(title, category, building, room, campus_id=campus_id)
+    duplicates = await detect_potential_duplicates(title, category, building, room, campus_id=campus_id, institution_id=institution_id_for(current_user))
     role = current_user["role"]
     if role in ("student", "faculty"):
         visible = [item for item in duplicates if item.get("_created_by_id") == current_user["id"]]
@@ -124,6 +125,7 @@ async def create_ticket(
             ticket_in.floor or "Ground",
             ticket_in.room,
             campus_id=ticket_in.campus_id,
+            institution_id=institution_id_for(current_user),
         )
         if not is_valid_loc:
             raise HTTPException(
@@ -174,7 +176,7 @@ async def create_ticket(
 
     # Check auto assignment
     if auto_assign:
-        staff = await find_best_staff_for_ticket(ticket_in.category)
+        staff = await find_best_staff_for_ticket(ticket_in.category, institution_id_for(current_user))
         if staff:
             assigned_staff = staff
             initial_status = TicketStatus.ASSIGNED.value
@@ -199,6 +201,7 @@ async def create_ticket(
         "priority": priority.value,
         "status": initial_status,
         "campus_id": ticket_in.campus_id,
+        "institution_id": institution_id_for(current_user),
         "building": ticket_in.building,
         "floor": ticket_in.floor,
         "room": ticket_in.room,
@@ -261,7 +264,7 @@ async def list_tickets(
     current_user: dict = Depends(get_current_user)
 ):
     db = get_database()
-    query = {}
+    query = {"institution_id": institution_id_for(current_user)}
     user_role = current_user["role"]
     user_id = current_user["id"]
 
@@ -349,9 +352,9 @@ async def list_tickets(
 @router.get("/{ticket_id}", response_model=TicketResponse)
 async def get_ticket_detail(ticket_id: str, current_user: dict = Depends(get_current_user)):
     db = get_database()
-    ticket = await db.tickets.find_one({
+    ticket = await db.tickets.find_one(scoped_filter(current_user, {
         "$or": [{"_id": ticket_id}, {"ticket_id": ticket_id}]
-    })
+    }))
     if not ticket:
         raise HTTPException(status_code=404, detail="Ticket not found")
 
@@ -457,7 +460,7 @@ async def update_ticket_status(
         details={"old_status": old_status, "new_status": new_status, "note": status_update.note}
     )
 
-    updated_doc = await db.tickets.find_one({"_id": ticket["_id"]})
+    updated_doc = await db.tickets.find_one(scoped_filter(current_user, {"_id": ticket["_id"]}))
     return format_ticket_doc(updated_doc)
 
 @router.put("/{ticket_id}/priority", response_model=TicketResponse)
@@ -526,13 +529,13 @@ async def link_ticket_to_incident(
     incident_id = payload.incident_id.strip()
 
     db = get_database()
-    ticket = await db.tickets.find_one({"$or": [{"_id": ticket_id}, {"ticket_id": ticket_id}]})
+    ticket = await db.tickets.find_one(scoped_filter(current_user, {"$or": [{"_id": ticket_id}, {"ticket_id": ticket_id}]}))
     if not ticket:
         raise HTTPException(status_code=404, detail="Ticket not found")
     if current_user["role"] == "staff" and (ticket.get("assigned_to") or {}).get("id") != current_user["id"]:
         raise HTTPException(status_code=403, detail="You can only link incidents to tickets assigned to you.")
 
-    incident = await db.incidents.find_one({"_id": incident_id})
+    incident = await db.incidents.find_one(scoped_filter(current_user, {"_id": incident_id}))
     if not incident:
         raise HTTPException(status_code=404, detail="Incident not found")
     existing_incident_id = ticket.get("linked_incident_id")
@@ -564,7 +567,7 @@ async def link_ticket_to_incident(
         raise HTTPException(status_code=409, detail="This ticket changed or was linked by another user. Refresh and try again.")
 
     await db.incidents.update_one(
-        {"_id": incident_id},
+        scoped_filter(current_user, {"_id": incident_id}),
         {"$addToSet": {"linked_ticket_ids": ticket["ticket_id"]}, "$set": {"updated_at": now_iso}}
     )
     await record_audit_log(
