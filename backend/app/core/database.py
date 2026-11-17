@@ -223,6 +223,8 @@ async def init_indexes(db):
         await db.refresh_tokens.create_index("token_hash", unique=True)
         await db.refresh_tokens.create_index("user_id")
         await db.refresh_tokens.create_index("expires_at", expireAfterSeconds=0)
+        await db.password_reset_tokens.create_index("user_id")
+        await db.password_reset_tokens.create_index("expires_at", expireAfterSeconds=0)
         await db.login_rate_limits.create_index("window_expires_at", expireAfterSeconds=0)
         logger.info("Database indexes verified for all collections.")
     except Exception:
