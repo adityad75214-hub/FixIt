@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Wrench, Mail, Lock, Building2, User, Hash, ArrowRight, ShieldCheck, ArrowLeft } from 'lucide-react';
+import { Wrench, ArrowRight, ShieldCheck, ArrowLeft } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { institutionService, authService } from '../api/services';
 
