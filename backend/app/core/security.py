@@ -88,6 +88,7 @@ async def get_current_user(
     # Keep password hashes out of request-scoped user objects.
     user.pop("password_hash", None)
     user["id"] = str(user.get("_id"))
+    user["institution_id"] = str(user.get("institution_id") or "INST-DEFAULT")
     return user
 
 def require_roles(*allowed_roles: str):
