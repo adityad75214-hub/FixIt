@@ -234,7 +234,8 @@ async def create_ticket(
         title=f"New Ticket Created: {ticket_custom_id}",
         message=f"[{priority.value.upper()}] {ticket_in.title} ({ticket_in.category})",
         link=f"/tickets/{doc_id}",
-        notif_type="ticket_created"
+        notif_type="ticket_created",
+        institution_id=institution_id_for(current_user)
     )
 
     await record_audit_log(
