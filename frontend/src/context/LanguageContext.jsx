@@ -155,6 +155,65 @@ const translations = {
 
 };
 
+const supplementalTranslations = {
+  "hi": {
+    "Support Staff Portal": "सहायता कर्मचारी पोर्टल",
+    "Loading campus support": "कैंपस सहायता लोड हो रही है…",
+    "Notifications": "सूचनाएँ",
+    "Mark all read": "सभी को पढ़ा हुआ चिह्नित करें",
+    "No notifications right now": "अभी कोई सूचना नहीं है",
+    "View request": "अनुरोध देखें"
+  },
+  "kn": {
+    "Support Staff Portal": "ಸಹಾಯ ಸಿಬ್ಬಂದಿ ಪೋರ್ಟಲ್",
+    "Loading campus support": "ಕ್ಯಾಂಪಸ್ ಸಹಾಯ ಲೋಡ್ ಆಗುತ್ತಿದೆ…",
+    "Notifications": "ಅಧಿಸೂಚನೆಗಳು",
+    "Mark all read": "ಎಲ್ಲವನ್ನೂ ಓದಿದಂತೆ ಗುರುತಿಸಿ",
+    "No notifications right now": "ಈಗ ಯಾವುದೇ ಅಧಿಸೂಚನೆಗಳಿಲ್ಲ",
+    "View request": "ವಿನಂತಿಯನ್ನು ವೀಕ್ಷಿಸಿ"
+  },
+  "ta": {
+    "Support Staff Portal": "ஆதரவு பணியாளர் தளம்",
+    "Loading campus support": "வளாக ஆதரவு ஏற்றப்படுகிறது…",
+    "Notifications": "அறிவிப்புகள்",
+    "Mark all read": "அனைத்தையும் படித்ததாகக் குறிக்கவும்",
+    "No notifications right now": "இப்போது அறிவிப்புகள் இல்லை",
+    "View request": "கோரிக்கையைப் பார்க்கவும்"
+  },
+  "te": {
+    "Support Staff Portal": "సహాయ సిబ్బంది పోర్టల్",
+    "Loading campus support": "క్యాంపస్ సహాయం లోడ్ అవుతోంది…",
+    "Notifications": "నోటిఫికేషన్‌లు",
+    "Mark all read": "అన్నింటినీ చదివినట్లు గుర్తించండి",
+    "No notifications right now": "ప్రస్తుతం నోటిఫికేషన్‌లు లేవు",
+    "View request": "అభ్యర్థనను చూడండి"
+  },
+  "ml": {
+    "Support Staff Portal": "സഹായ ജീവനക്കാരുടെ പോർട്ടൽ",
+    "Loading campus support": "ക്യാമ്പസ് സഹായം ലോഡ് ചെയ്യുന്നു…",
+    "Notifications": "അറിയിപ്പുകൾ",
+    "Mark all read": "എല്ലാം വായിച്ചതായി അടയാളപ്പെടുത്തുക",
+    "No notifications right now": "ഇപ്പോൾ അറിയിപ്പുകളൊന്നുമില്ല",
+    "View request": "അഭ്യർത്ഥന കാണുക"
+  },
+  "mr": {
+    "Support Staff Portal": "सहाय्य कर्मचारी पोर्टल",
+    "Loading campus support": "कॅम्पस सहाय्य लोड होत आहे…",
+    "Notifications": "सूचना",
+    "Mark all read": "सर्व वाचलेले म्हणून चिन्हांकित करा",
+    "No notifications right now": "सध्या कोणत्याही सूचना नाहीत",
+    "View request": "विनंती पहा"
+  },
+  "bn": {
+    "Support Staff Portal": "সহায়তা কর্মী পোর্টাল",
+    "Loading campus support": "ক্যাম্পাস সহায়তা লোড হচ্ছে…",
+    "Notifications": "বিজ্ঞপ্তি",
+    "Mark all read": "সব পড়া হিসেবে চিহ্নিত করুন",
+    "No notifications right now": "এখন কোনো বিজ্ঞপ্তি নেই",
+    "View request": "অনুরোধ দেখুন"
+  }
+};
+
 export const LANGUAGE_OPTIONS = [
   { value: 'en', label: 'English', nativeLabel: 'English' },
   { value: 'hi', label: 'Hindi', nativeLabel: 'हिन्दी' },
@@ -179,7 +238,7 @@ export function LanguageProvider({ children }) {
     try { localStorage.setItem('fixit_language', language); } catch { /* storage may be unavailable */ }
     document.documentElement.lang = language;
   }, [language]);
-  const t = (value) => translations[language]?.[value] || value;
+  const t = (value) => supplementalTranslations[language]?.[value] || translations[language]?.[value] || value;
   return <LanguageContext.Provider value={{ language, setLanguage, t }}>{children}</LanguageContext.Provider>;
 }
 
