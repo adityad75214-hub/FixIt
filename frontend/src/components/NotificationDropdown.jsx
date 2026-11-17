@@ -2,8 +2,10 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Bell, Check, Clock, ExternalLink } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { notificationService } from '../api/services';
+import { useLanguage } from '../context/LanguageContext';
 
 export default function NotificationDropdown() {
+  const { t } = useLanguage();
   const [open, setOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -61,7 +63,7 @@ export default function NotificationDropdown() {
         onClick={() => setOpen(!open)}
         className="btn btn-secondary btn-sm"
         style={{ position: 'relative', padding: '0.5rem', borderRadius: '50%', border: 'none' }}
-        title="Notifications"
+        title={t("Notifications")} aria-label={t("Notifications")}
       >
         <Bell size={20} color="var(--text-muted)" />
         {unreadCount > 0 && (
@@ -107,7 +109,7 @@ export default function NotificationDropdown() {
             justifyContent: 'space-between',
             backgroundColor: 'var(--bg-main)'
           }}>
-            <span style={{ fontWeight: '600', fontSize: '0.875rem' }}>Notifications</span>
+            <span style={{ fontWeight: '600', fontSize: '0.875rem' }}>{t('Notifications')}</span>
             {unreadCount > 0 && (
               <button
                 onClick={handleMarkAllRead}
