@@ -377,7 +377,7 @@ export default function TicketDetailPage() {
               <div className="form-group" style={{ marginBottom: '0.75rem' }}>
                 <textarea
                   className="form-control"
-                  placeholder={isInternalNote ? "Enter private internal troubleshooting note..." : "Add a public reply or question for IT staff..."}
+                  placeholder={isInternalNote ? "Enter private internal troubleshooting note..." : "Add a public reply or question for support staff..."}
                   value={commentText}
                   onChange={(e) => setCommentText(e.target.value)}
                   rows={3}
@@ -675,7 +675,7 @@ export default function TicketDetailPage() {
       <Modal
         isOpen={assignModalOpen}
         onClose={() => setAssignModalOpen(false)}
-        title="Assign Ticket to IT Staff Member"
+        title="Assign Ticket to Support Staff Member"
       >
         <div className="form-group">
           <label className="form-label">Select Staff Member</label>
@@ -684,7 +684,7 @@ export default function TicketDetailPage() {
             value={selectedStaffId}
             onChange={(e) => setSelectedStaffId(e.target.value)}
           >
-            <option value="">Choose technician...</option>
+            <option value="">Choose staff member...</option>
             {staffList.map((s) => (
               <option key={s.id} value={s.id}>
                 {s.name} ({s.specialization?.join(', ') || 'General'}) - {s.active_tickets_count} active tickets
@@ -752,11 +752,11 @@ export default function TicketDetailPage() {
       <Modal
         isOpen={feedbackModalOpen}
         onClose={() => setFeedbackModalOpen(false)}
-        title="Rate IT Support Service"
+        title="Rate Support Service"
       >
         <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
           <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
-            How satisfied are you with the technical resolution provided by IT support?
+            How satisfied are you with the support provided by the FixIt team?
           </p>
           <div style={{ display: 'flex', justifyContent: 'center', gap: '0.5rem' }}>
             {[1, 2, 3, 4, 5].map((star) => (
