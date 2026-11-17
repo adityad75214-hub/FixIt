@@ -46,3 +46,21 @@ jobs:
       - run: npm ci
       - run: npm run test
       - run: npm run build
+
+  production-containers:
+    name: Production container build and Compose validation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate production Compose configuration
+        run: |
+          cp .env.production.example .env.production
+          docker compose -f docker-compose.production.yml config --quiet
+      - name: Build backend production image
+        run: docker build --pull -f backend/Dockerfile -t fixit-backend:ci backend
+      - name: Build frontend production image
+        run: |
+          docker build --pull \
+            --build-arg VITE_PUBLIC_REGISTRATION_ENABLED=false \
+            --build-arg VITE_DEMO_MODE_ENABLED=false \
+            -f frontend/Dockerfile -t fixit-frontend:ci frontend
