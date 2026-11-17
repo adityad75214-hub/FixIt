@@ -87,6 +87,13 @@ async def update_institution(institution_id: str, payload: InstitutionUpdate, cu
     update = {key: value for key, value in payload.model_dump().items() if value is not None}
     if not update:
         raise HTTPException(status_code=400, detail="Provide at least one institution field to update.")
+    if institution_id == "INST-DEFAULT" and update.get("status") == "suspended":
+        raise HTTPException(status_code=400, detail="The default migrated workspace cannot be suspended.")
+    domains = update.get("email_domains")
+    if domains:
+        conflicting = await db.institutions.find_one({"_id": {"$ne": institution_id}, "email_domains": {"$in": domains}})
+        if conflicting:
+            raise HTTPException(status_code=409, detail="One or more email domains are already assigned to another institution.")
     result = await db.institutions.update_one({"_id": institution_id}, {"$set": update})
     if not result.matched_count:
         raise HTTPException(status_code=404, detail="Institution not found.")
