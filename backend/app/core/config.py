@@ -90,8 +90,11 @@ class Settings(BaseSettings):
                 parsed_origin = urlsplit(origin)
                 if parsed_origin.scheme != "https" or not parsed_origin.hostname or parsed_origin.path not in ("", "/") or parsed_origin.query or parsed_origin.fragment:
                     raise ValueError("Production CORS origins must be HTTPS origins without paths or query strings")
-            if any(host.strip().lower() in {"localhost", "127.0.0.1", "0.0.0.0", "::1"} or "://" in host or "/" in host for host in self.ALLOWED_HOSTS):
-                raise ValueError("Production ALLOWED_HOSTS must contain public hostnames, not local addresses or URLs")
+            loopback_hosts = {"localhost", "127.0.0.1", "::1"}
+            if any("://" in host or "/" in host for host in self.ALLOWED_HOSTS):
+                raise ValueError("Production ALLOWED_HOSTS must contain hostnames, not URLs")
+            if not any(host.strip().lower() not in loopback_hosts for host in self.ALLOWED_HOSTS):
+                raise ValueError("Production ALLOWED_HOSTS must include at least one public hostname")
             if self.APP_BASE_URL:
                 app_url = urlsplit(self.APP_BASE_URL)
                 if app_url.scheme != "https" or not app_url.hostname or app_url.username or app_url.password:
