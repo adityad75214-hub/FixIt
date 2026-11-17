@@ -8,6 +8,7 @@ class UserRole(str, Enum):
     FACULTY = "faculty"
     STAFF = "staff"
     ADMIN = "admin"
+    PLATFORM_ADMIN = "platform_admin"
 
 class UserBase(BaseModel):
     email: EmailStr = Field(..., max_length=254)
