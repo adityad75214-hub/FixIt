@@ -86,7 +86,7 @@ export default function KnowledgeBasePage() {
       <div className="page-header">
         <div>
           <h1 className="page-title">Self-Service Knowledge Base & FAQs</h1>
-          <p className="page-subtitle">Search verified technical solutions, setups, and campus computing guides</p>
+          <p className="page-subtitle">Find verified answers, guides, FAQs, and self-service help across all FixIt support categories</p>
         </div>
         {isStaffOrAdmin && (
           <button className="btn btn-navy" onClick={() => setCreateModalOpen(true)}>
@@ -102,7 +102,7 @@ export default function KnowledgeBasePage() {
             <input
               type="text"
               className="form-control"
-              placeholder="Search guides (e.g. Eduroam, Projector, Password, MATLAB)..."
+              placeholder="Search articles, guides and FAQs..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               style={{ paddingLeft: '2.5rem' }}
