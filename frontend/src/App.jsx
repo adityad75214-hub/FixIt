@@ -2,6 +2,7 @@ import React, { lazy, Suspense, useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
+import { LanguageProvider } from './context/LanguageContext';
 
 // Components
 import Navbar from './components/Navbar';
@@ -61,6 +62,7 @@ function RoleDashboard() {
 
 export default function App() {
   return (
+    <LanguageProvider>
     <ThemeProvider>
       <AuthProvider>
         <BrowserRouter>
@@ -110,5 +112,6 @@ export default function App() {
         </BrowserRouter>
       </AuthProvider>
     </ThemeProvider>
+    </LanguageProvider>
   );
 }
