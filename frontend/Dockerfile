@@ -1,6 +1,6 @@
 # Production Multi-Stage Dockerfile for FixIt React/Vite Frontend
 # Stage 1: Build static assets
-FROM node:20-alpine as build
+FROM node:24-alpine AS build
 
 WORKDIR /app
 
