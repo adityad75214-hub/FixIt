@@ -18,6 +18,27 @@ Each request can be associated with a campus location, an online/remote context,
 
 The domain is a routing classification, not a promise that FixIt itself can provide every specialist service. Sensitive or high-risk requests must be routed to trained, authorized people; the platform should not present automated responses as medical, legal, financial, or emergency advice.
 
+## Included user-facing features
+
+- **Notifications:** authenticated in-app alerts, read/unread state, and per-user notification preferences. Email delivery is optional and requires SMTP configuration.
+- **Profiles:** editable name, department, phone, and HTTPS profile-image URL; password changes revoke existing sessions.
+- **Preferences:** light/dark appearance, saved English/Hindi language preference, and in-app/email notification toggles. The language preference is stored; full translated UI strings are not yet implemented.
+- **Ticket conversations:** ticket-specific replies, staff-only internal notes, chronological history, and up to five secure HTTPS attachment links per message. Attachments are linked from an external file host; binary file upload/storage is not part of this implementation.
+- **Knowledge base:** searchable articles, FAQs, categories, helpfulness feedback, and staff/admin article management across support topics.
+
+### Optional email delivery
+
+Configure these environment variables on the backend to enable email notifications. If SMTP is not configured, in-app notifications continue to work and email is skipped.
+
+```env
+SMTP_HOST=
+SMTP_PORT=587
+SMTP_USERNAME=
+SMTP_PASSWORD=
+SMTP_FROM_EMAIL=
+SMTP_STARTTLS=true
+```
+
 ## Project structure
 
 - `backend/` — FastAPI API, MongoDB integration, authentication, ticket workflows, and automated tests.
