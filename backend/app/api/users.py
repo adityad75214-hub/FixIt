@@ -166,7 +166,7 @@ async def update_user_by_admin(
     if removes_active_admin and user_id == current_user["id"]:
         raise HTTPException(status_code=400, detail="You cannot deactivate or demote your own administrator account.")
     if removes_active_admin:
-        active_admin_count = await db.users.count_documents({"role": "admin", "$or": [{"is_active": True}, {"is_active": {"$exists": False}}]})
+        active_admin_count = await db.users.count_documents({"institution_id": institution_id_for(current_user), "role": "admin", "$or": [{"is_active": True}, {"is_active": {"$exists": False}}]})
         if active_admin_count <= 1:
             raise HTTPException(status_code=409, detail="At least one active administrator account must remain.")
 
