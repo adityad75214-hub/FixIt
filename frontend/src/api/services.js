@@ -7,11 +7,20 @@ export const institutionService = {
   update: (id, data) => api.put(`/institutions/${id}`, data),
   inviteAdmin: (id, data) => api.post(`/institutions/${id}/admins/invitations`, data),
   acceptAdminInvitation: (data) => api.post('/institutions/admin-invitations/accept', data),
+  listAdministrators: (id) => api.get(`/institutions/${id}/administrators`),
+  requestAdministrator: (id, data) => api.post(`/institutions/${id}/admin-requests`, data),
+  listAdministratorRequests: (id) => api.get(`/institutions/${id}/admin-requests`),
+  approveAdministratorRequest: (id, requestId) => api.post(`/institutions/${id}/admin-requests/${requestId}/approve`),
+  rejectAdministratorRequest: (id, requestId) => api.post(`/institutions/${id}/admin-requests/${requestId}/reject`),
+  updateAdministratorStatus: (id, userId, is_active) => api.patch(`/institutions/${id}/administrators/${userId}`, { is_active }),
+  makePrimaryAdministrator: (id, userId) => api.post(`/institutions/${id}/administrators/${userId}/make-primary`),
 };
 
 export const authService = {
   login: (data) => api.post('/auth/login', data),
   register: (data) => api.post('/auth/register', data),
+  requestRegistrationCode: (data) => api.post('/auth/registration/request-code', data),
+  verifyRegistrationCode: (data) => api.post('/auth/registration/verify-code', data),
   getMe: () => api.get('/auth/me'),
   logout: () => api.post('/auth/logout'),
   refresh: () => api.post('/auth/refresh'),

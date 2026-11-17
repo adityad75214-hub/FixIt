@@ -61,23 +61,31 @@ async def create_institution(payload: InstitutionCreate, current_user: dict = De
 
 
 @router.post("/{institution_id}/admins/invitations", status_code=status.HTTP_202_ACCEPTED)
-async def invite_institution_admin(institution_id: str, payload: InstitutionAdminInvite, current_user: dict = Depends(require_roles("platform_admin"))):
+async def invite_institution_admin(institution_id: str, payload: InstitutionAdminInvite, current_user: dict = Depends(require_roles("platform_admin", "admin"))):
     """Invite a college administrator; the recipient chooses their password after accepting."""
     from app.core.config import settings
     from app.services.notification_service import _send_email
 
-    if not settings.SMTP_HOST or not settings.APP_BASE_URL or not (settings.SMTP_FROM_EMAIL or settings.SMTP_USERNAME):
-        raise HTTPException(status_code=503, detail="Administrator invitations require SMTP_HOST, sender email, and APP_BASE_URL configuration.")
-
     db = get_database()
+    # Platform admins provision the first Primary College Admin. Thereafter,
+    # only the Primary College Admin can issue direct invitations.
+    if current_user.get("role") != "platform_admin":
+        if current_user.get("institution_id") != institution_id:
+            raise HTTPException(status_code=403, detail="You can invite administrators only for your own institution.")
+        if current_user.get("admin_level") != "primary":
+            raise HTTPException(status_code=403, detail="Only the Primary College Admin can send direct administrator invitations. Submit a request for approval instead.")
+
     institution = await db.institutions.find_one({"_id": institution_id, "status": "active"})
     if not institution:
         raise HTTPException(status_code=404, detail="Active institution not found.")
 
+    if not settings.SMTP_HOST or not settings.APP_BASE_URL or not (settings.SMTP_FROM_EMAIL or settings.SMTP_USERNAME):
+        raise HTTPException(status_code=503, detail="Administrator invitations require SMTP_HOST, sender email, and APP_BASE_URL configuration.")
+
     email = str(payload.email).strip().lower()
     domain = email.rsplit("@", 1)[-1]
-    allowed_domains = institution.get("email_domains", [])
-    if allowed_domains and domain not in allowed_domains:
+    allowed_domains = [str(item).lower().lstrip("@") for item in institution.get("email_domains", [])]
+    if not allowed_domains or domain not in allowed_domains:
         raise HTTPException(status_code=400, detail="The administrator email must use an approved institution domain.")
     if await db.users.find_one({"email": email}):
         raise HTTPException(status_code=409, detail="An account with this email already exists.")
@@ -87,11 +95,17 @@ async def invite_institution_admin(institution_id: str, payload: InstitutionAdmi
     raw_token = __import__("secrets").token_urlsafe(48)
     now = datetime.now(timezone.utc)
     invitation_id = f"INV-{uuid.uuid4().hex[:12].upper()}"
+    active_admin_count = await db.users.count_documents({"institution_id": institution_id, "role": "admin", "$or": [{"is_active": True}, {"is_active": {"$exists": False}}]})
+    pending_primary = await db.admin_invitations.find_one({"institution_id": institution_id, "admin_level": "primary", "used_at": None, "expires_at": {"$gt": now}})
+    invited_admin_level = "primary" if current_user.get("role") == "platform_admin" and active_admin_count == 0 and pending_primary is None else "college"
     invite = {
         "_id": invitation_id,
         "email": email,
         "name": payload.name,
         "role": "admin",
+        "admin_level": invited_admin_level,
+        "department": payload.department or "Administration",
+        "designation": payload.designation,
         "institution_id": institution_id,
         "token_hash": hash_token(raw_token),
         "created_at": now,
@@ -113,7 +127,7 @@ async def invite_institution_admin(institution_id: str, payload: InstitutionAdmi
         await db.admin_invitations.delete_one({"_id": invitation_id})
         raise HTTPException(status_code=502, detail="The invitation email could not be sent. No administrator account was created.") from None
 
-    await record_audit_log(action="INSTITUTION_ADMIN_INVITED", resource_type="institution", resource_id=institution_id, actor=current_user, details={"email": email, "invitation_id": invitation_id})
+    await record_audit_log(action="INSTITUTION_ADMIN_INVITED", resource_type="institution", resource_id=institution_id, actor={**current_user, "institution_id": institution_id}, details={"email": email, "invitation_id": invitation_id, "admin_level": invited_admin_level})
     return {"message": "Administrator invitation sent.", "email": email, "expires_in_hours": 48}
 
 
@@ -128,6 +142,11 @@ async def accept_institution_admin_invitation(payload: InstitutionAdminInviteAcc
     institution = await db.institutions.find_one({"_id": invite["institution_id"], "status": "active"})
     if not institution:
         raise HTTPException(status_code=400, detail="The institution is unavailable. Contact FixIt support.")
+    invited_domain = invite["email"].rsplit("@", 1)[-1].lower()
+    approved_domains = [str(item).lower().lstrip("@") for item in institution.get("email_domains", [])]
+    if not approved_domains or invited_domain not in approved_domains:
+        await db.admin_invitations.delete_one({"_id": invite["_id"]})
+        raise HTTPException(status_code=403, detail="This invitation no longer matches an approved institution email domain.")
     if await db.users.find_one({"email": invite["email"]}):
         raise HTTPException(status_code=409, detail="An account with this email already exists.")
 
@@ -138,10 +157,15 @@ async def accept_institution_admin_invitation(payload: InstitutionAdminInviteAcc
         "password_hash": get_password_hash(payload.password),
         "name": invite["name"],
         "role": "admin",
+        "admin_level": invite.get("admin_level", "college"),
         "institution_id": invite["institution_id"],
-        "department": "Administration",
+        "department": invite.get("department", "Administration"),
+        "designation": invite.get("designation"),
         "specialization": [],
         "is_active": True,
+        "email_verified": True,
+        "email_verified_at": now.isoformat(),
+        "approval_method": "institution_admin_invitation",
         "token_version": 0,
         "created_at": now.isoformat(),
     }
@@ -157,8 +181,8 @@ async def accept_institution_admin_invitation(payload: InstitutionAdminInviteAcc
     if consumed.modified_count != 1:
         await db.users.delete_one({"_id": user_id})
         raise HTTPException(status_code=400, detail="This invitation has already been used.")
-    await record_audit_log(action="INSTITUTION_ADMIN_INVITATION_ACCEPTED", resource_type="user", resource_id=user_id, actor={"id": user_id, "email": user["email"], "name": user["name"], "role": "admin", "institution_id": user["institution_id"]}, details={"institution_id": user["institution_id"]})
-    return {"message": "Administrator account created. You can now sign in.", "user": {"id": user_id, "email": user["email"], "name": user["name"], "role": "admin", "institution_id": user["institution_id"]}}
+    await record_audit_log(action="INSTITUTION_ADMIN_INVITATION_ACCEPTED", resource_type="user", resource_id=user_id, actor={"id": user_id, "email": user["email"], "name": user["name"], "role": "admin", "institution_id": user["institution_id"]}, details={"institution_id": user["institution_id"], "admin_level": user["admin_level"]})
+    return {"message": "Administrator account created. You can now sign in.", "user": {"id": user_id, "email": user["email"], "name": user["name"], "role": "admin", "admin_level": user["admin_level"], "institution_id": user["institution_id"]}}
 
 
 

@@ -48,7 +48,7 @@ def test_platform_admin_invites_college_admin_and_invitation_is_single_use(clien
     assert sent["recipient"] == email
     assert sync_db.users.find_one({"email": email}) is None
 
-    raw_token = re.search(r"token=([^\\s]+)", sent["body"]).group(1)
+    raw_token = re.search(r"token=([^\s]+)", sent["body"]).group(1)
     accepted = client.post(
         "/api/institutions/admin-invitations/accept",
         json={"token": raw_token, "password": "A-Strong-Password-123!"},

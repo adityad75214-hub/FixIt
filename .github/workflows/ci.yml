@@ -61,6 +61,6 @@ jobs:
       - name: Build frontend production image
         run: |
           docker build --pull \
-            --build-arg VITE_PUBLIC_REGISTRATION_ENABLED=false \
+            --build-arg VITE_PUBLIC_REGISTRATION_ENABLED=true \
             --build-arg VITE_DEMO_MODE_ENABLED=false \
             -f frontend/Dockerfile -t fixit-frontend:ci frontend

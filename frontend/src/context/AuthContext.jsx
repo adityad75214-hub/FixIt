@@ -53,6 +53,16 @@ export const AuthProvider = ({ children }) => {
     return newUser;
   };
 
+  const completeRegistration = async (email, code) => {
+    const res = await authService.verifyRegistrationCode({ email, code });
+    const { access_token, user: userData } = res.data;
+    setAccessToken(access_token);
+    setToken(access_token);
+    setUser(userData);
+    localStorage.setItem('fixit_user', JSON.stringify(userData));
+    return userData;
+  };
+
   const logout = async () => {
     try {
       await authService.logout?.();
@@ -83,6 +93,7 @@ export const AuthProvider = ({ children }) => {
       isAuthenticated: !!user,
       login,
       register,
+      completeRegistration,
       logout,
       refreshUser
     }}>

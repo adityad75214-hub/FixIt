@@ -20,7 +20,7 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        VITE_PUBLIC_REGISTRATION_ENABLED: "false"
+        VITE_PUBLIC_REGISTRATION_ENABLED: "true"
         VITE_DEMO_MODE_ENABLED: "false"
     depends_on:
       backend:

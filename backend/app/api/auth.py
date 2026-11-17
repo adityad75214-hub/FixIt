@@ -239,7 +239,8 @@ async def register(user_in: UserCreate, response: Response, request: Request):
         is_active=True,
         created_at=new_user["created_at"],
         institution_id=institution_id,
-        institution_name=(institution_doc or {}).get("name", "Default Institution")
+        institution_name=(institution_doc or {}).get("name", "Default Institution"),
+        admin_level=new_user.get("admin_level")
     )
     return Token(access_token=access_token, user=user_response)
 
@@ -315,7 +316,8 @@ async def login(credentials: UserLogin, request: Request, response: Response):
         is_active=user.get("is_active", True),
         created_at=user.get("created_at", datetime.now(timezone.utc).isoformat()),
         institution_id=user.get("institution_id") or "INST-DEFAULT",
-        institution_name=(institution_doc or {}).get("name", "Default Institution")
+        institution_name=(institution_doc or {}).get("name", "Default Institution"),
+        admin_level=user.get("admin_level")
     )
     return Token(access_token=access_token, user=user_response)
 
@@ -432,7 +434,8 @@ async def get_my_profile(current_user: dict = Depends(get_current_user)):
         is_active=current_user.get("is_active", True),
         created_at=current_user.get("created_at", ""),
         institution_id=current_user.get("institution_id") or "INST-DEFAULT",
-        institution_name=current_user.get("institution_name")
+        institution_name=current_user.get("institution_name"),
+        admin_level=current_user.get("admin_level")
     )
 
 @router.put("/profile", response_model=UserResponse)
@@ -475,7 +478,8 @@ async def update_my_profile(
         is_active=updated.get("is_active", True),
         created_at=updated.get("created_at", ""),
         institution_id=updated.get("institution_id") or "INST-DEFAULT",
-        institution_name=current_user.get("institution_name")
+        institution_name=current_user.get("institution_name"),
+        admin_level=updated.get("admin_level")
     )
 
 @router.post("/change-password")

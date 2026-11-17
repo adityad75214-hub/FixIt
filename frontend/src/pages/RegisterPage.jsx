@@ -1,243 +1,174 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Wrench, User, Mail, Lock, Building, Phone, Hash, AlertCircle, ArrowRight } from 'lucide-react';
+import { Wrench, ArrowRight, ShieldCheck, ArrowLeft } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { institutionService } from '../api/services';
+import { institutionService, authService } from '../api/services';
+
+const initialForm = {
+  name: '',
+  email: '',
+  password: '',
+  role: 'student',
+  department: '',
+  phone: '',
+  identifier: '',
+  institution_slug: '',
+};
 
 export default function RegisterPage() {
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    password: '',
-    role: 'student',
-    department: 'Computer Science',
-    phone: '',
-    identifier: '',
-    institution_slug: ''
-  });
+  const [formData, setFormData] = useState(initialForm);
   const [institutions, setInstitutions] = useState([]);
+  const [step, setStep] = useState('details');
+  const [code, setCode] = useState('');
+  const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const { register } = useAuth();
+  const { completeRegistration } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
     institutionService.list().then(({ data }) => {
       setInstitutions(data || []);
-      if (data?.length === 1) setFormData((current) => ({ ...current, institution_slug: data[0].slug }));
-    }).catch(() => setInstitutions([]));
+      if (data?.length === 1) {
+        setFormData((current) => ({ ...current, institution_slug: data[0].slug }));
+      }
+    }).catch(() => setError('Unable to load colleges. Please refresh and try again.'));
   }, []);
 
-  const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+  const handleChange = (event) => {
+    setFormData((current) => ({ ...current, [event.target.name]: event.target.value }));
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const requestCode = async (event) => {
+    event.preventDefault();
     setError('');
+    setMessage('');
     setLoading(true);
     try {
-      await register(formData);
-      navigate('/dashboard');
+      const { data } = await authService.requestRegistrationCode(formData);
+      setStep('verify');
+      setMessage(data.message || 'A verification code has been sent to your college email.');
     } catch (err) {
-      setError(err.response?.data?.detail || 'Registration failed. Please check your information.');
+      setError(err.response?.data?.detail || 'Unable to send the verification code.');
     } finally {
       setLoading(false);
     }
   };
 
+  const verifyCode = async (event) => {
+    event.preventDefault();
+    setError('');
+    setLoading(true);
+    try {
+      await completeRegistration(formData.email, code);
+      navigate('/dashboard');
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Email verification failed. Check the code and try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const selectedInstitution = institutions.find((item) => item.slug === formData.institution_slug);
+
   return (
-    <div style={{
-      minHeight: '100vh',
-      backgroundColor: 'var(--bg-main)',
-      display: 'flex',
-      flexDirection: 'column',
-      justifyContent: 'center',
-      alignItems: 'center',
-      padding: '2.5rem 1rem'
-    }}>
-      <div style={{ maxWidth: '520px', width: '100%' }}>
+    <div style={{ minHeight: '100vh', backgroundColor: 'var(--bg-main)', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', padding: '2.5rem 1rem' }}>
+      <div style={{ maxWidth: '560px', width: '100%' }}>
         <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
           <Link to="/" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.625rem', marginBottom: '0.75rem' }}>
-            <div style={{
-              width: '42px',
-              height: '42px',
-              borderRadius: '10px',
-              backgroundColor: 'var(--primary-navy)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: '#FFFFFF'
-            }}>
+            <div style={{ width: '42px', height: '42px', borderRadius: '10px', backgroundColor: 'var(--primary-navy)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#FFFFFF' }}>
               <Wrench size={24} />
             </div>
             <span style={{ fontSize: '1.75rem', fontWeight: '800', color: 'var(--primary-navy)' }}>FixIt</span>
           </Link>
-          <h2 style={{ fontSize: '1.35rem', fontWeight: '700', color: 'var(--text-main)' }}>Create your campus support account</h2>
+          <h2 style={{ fontSize: '1.35rem', fontWeight: '700', color: 'var(--text-main)' }}>
+            {step === 'details' ? 'Create your campus account' : 'Verify your college email'}
+          </h2>
           <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
-            Report campus issues and track support across your college
+            {step === 'details' ? 'Register yourself. Your college email verifies your institutional access.' : `Enter the six-digit code sent to ${formData.email}`}
           </p>
         </div>
 
         <div className="card" style={{ padding: '2rem' }}>
-          {error && (
-            <div style={{
-              backgroundColor: '#FEE2E2',
-              border: '1px solid #FCA5A5',
-              color: '#991B1B',
-              padding: '0.75rem 1rem',
-              borderRadius: '6px',
-              fontSize: '0.875rem',
-              marginBottom: '1.25rem',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem'
-            }}>
-              <AlertCircle size={18} />
-              <span>{error}</span>
-            </div>
-          )}
+          {error && <div role="alert" style={{ background: '#FEE2E2', border: '1px solid #FCA5A5', color: '#991B1B', padding: '0.75rem 1rem', borderRadius: '6px', fontSize: '0.875rem', marginBottom: '1.25rem' }}>{error}</div>}
+          {message && <div role="status" style={{ background: '#ECFDF5', border: '1px solid #A7F3D0', color: '#065F46', padding: '0.75rem 1rem', borderRadius: '6px', fontSize: '0.875rem', marginBottom: '1.25rem' }}>{message}</div>}
 
-          <form onSubmit={handleSubmit}>
-            <div className="form-group">
-              <label className="form-label">Account type</label>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.75rem' }}>
-                <label style={{
-                  border: formData.role === 'student' ? '2px solid var(--brand-blue)' : '1px solid var(--border-color)',
-                  backgroundColor: formData.role === 'student' ? 'var(--brand-blue-light)' : '#FFFFFF',
-                  borderRadius: '8px',
-                  padding: '0.75rem',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.5rem',
-                  cursor: 'pointer',
-                  fontSize: '0.875rem',
-                  fontWeight: '600',
-                  color: formData.role === 'student' ? 'var(--brand-blue)' : 'var(--text-muted)'
-                }}>
-                  <input
-                    type="radio"
-                    name="role"
-                    value="student"
-                    checked={formData.role === 'student'}
-                    onChange={handleChange}
-                    style={{ accentColor: 'var(--brand-blue)' }}
-                  />
-                  Enrolled Student
-                </label>
-
-
-              </div>
-            </div>
-
-            <div className="form-group">
-              <label className="form-label" htmlFor="institution_slug">College / Institution</label>
-              <select id="institution_slug" name="institution_slug" className="form-control" value={formData.institution_slug} onChange={handleChange} required>
-                <option value="">Select your college workspace</option>
-                {institutions.map((institution) => <option key={institution.id} value={institution.slug}>{institution.name}</option>)}
-              </select>
-              <small style={{ color: 'var(--text-muted)' }}>Use your official college email. Some institutions require an administrator-issued account.</small>
-            </div>
-            <div className="form-group">
-              <label className="form-label">Full Name</label>
-              <input
-                type="text"
-                name="name"
-                className="form-control"
-                placeholder="e.g. John Doe"
-                value={formData.name}
-                onChange={handleChange}
-                required
-              />
-            </div>
-
-            <div className="grid-2">
+          {step === 'details' ? (
+            <form onSubmit={requestCode}>
               <div className="form-group">
-                <label className="form-label">College Email</label>
-                <input
-                  type="email"
-                  name="email"
-                  className="form-control"
-                  placeholder="name@college.edu"
-                  value={formData.email}
-                  onChange={handleChange}
-                  required
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Password</label>
-                <input
-                  type="password"
-                  name="password"
-                  className="form-control"
-                  placeholder="Min 6 characters"
-                  value={formData.password}
-                  onChange={handleChange}
-                  minLength={12}
-                  required
-                />
-              </div>
-            </div>
-
-            <div className="grid-2">
-              <div className="form-group">
-                <label className="form-label">Academic Department</label>
-                <select
-                  name="department"
-                  className="form-control"
-                  value={formData.department}
-                  onChange={handleChange}
-                >
-                  <option value="Computer Science">Computer Science</option>
-                  <option value="Electrical Engineering">Electrical Engineering</option>
-                  <option value="Mechanical Engineering">Mechanical Engineering</option>
-                  <option value="Civil Engineering">Civil Engineering</option>
-                  <option value="Physics & Mathematics">Physics & Mathematics</option>
-                  <option value="Management & Humanities">Management & Humanities</option>
+                <label className="form-label" htmlFor="role">I am registering as</label>
+                <select id="role" name="role" className="form-control" value={formData.role} onChange={handleChange}>
+                  <option value="student">Student</option>
+                  <option value="faculty">Faculty</option>
                 </select>
               </div>
 
               <div className="form-group">
-                <label className="form-label">{formData.role === 'student' ? 'Roll / Student ID' : 'Faculty ID'}</label>
-                <input
-                  type="text"
-                  name="identifier"
-                  className="form-control"
-                  placeholder="e.g. 2024-CS-042"
-                  value={formData.identifier}
-                  onChange={handleChange}
-                />
+                <label className="form-label" htmlFor="institution_slug">College / Institution</label>
+                <select id="institution_slug" name="institution_slug" className="form-control" value={formData.institution_slug} onChange={handleChange} required>
+                  <option value="">Select your college</option>
+                  {institutions.map((institution) => <option key={institution.id} value={institution.slug}>{institution.name}</option>)}
+                </select>
+                {selectedInstitution && <small style={{ color: 'var(--text-muted)' }}>Use an email address belonging to {selectedInstitution.name}.</small>}
               </div>
-            </div>
 
-            <div className="form-group">
-              <label className="form-label">Phone Number (Optional)</label>
-              <input
-                type="text"
-                name="phone"
-                className="form-control"
-                placeholder="+1 (555) 000-0000"
-                value={formData.phone}
-                onChange={handleChange}
-              />
-            </div>
+              <div className="form-group">
+                <label className="form-label" htmlFor="name">Full name</label>
+                <input id="name" name="name" className="form-control" autoComplete="name" value={formData.name} onChange={handleChange} placeholder="Your full name" minLength={2} required />
+              </div>
 
-            <button
-              type="submit"
-              className="btn btn-navy"
-              style={{ width: '100%', marginTop: '0.75rem', padding: '0.75rem' }}
-              disabled={loading}
-            >
-              {loading ? 'Creating Account...' : 'Complete Registration'} <ArrowRight size={16} />
-            </button>
-          </form>
+              <div className="grid-2">
+                <div className="form-group">
+                  <label className="form-label" htmlFor="email">College email address</label>
+                  <input id="email" type="email" name="email" className="form-control" autoComplete="email" value={formData.email} onChange={handleChange} placeholder="you@college.edu" required />
+                </div>
+                <div className="form-group">
+                  <label className="form-label" htmlFor="identifier">{formData.role === 'student' ? 'USN / Student ID' : 'Employee ID'}</label>
+                  <input id="identifier" name="identifier" className="form-control" value={formData.identifier} onChange={handleChange} placeholder={formData.role === 'student' ? 'Your USN' : 'Your employee ID'} required />
+                </div>
+              </div>
+
+              <div className="grid-2">
+                <div className="form-group">
+                  <label className="form-label" htmlFor="department">Department</label>
+                  <input id="department" name="department" className="form-control" value={formData.department} onChange={handleChange} placeholder="e.g. Computer Science" required />
+                </div>
+                <div className="form-group">
+                  <label className="form-label" htmlFor="phone">Phone (optional)</label>
+                  <input id="phone" type="tel" name="phone" className="form-control" autoComplete="tel" value={formData.phone} onChange={handleChange} placeholder="Phone number" />
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label" htmlFor="password">Create password</label>
+                <input id="password" type="password" name="password" className="form-control" autoComplete="new-password" value={formData.password} onChange={handleChange} minLength={12} required />
+                <small style={{ color: 'var(--text-muted)' }}>Use at least 12 characters.</small>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-muted)', fontSize: '0.8rem', margin: '1rem 0' }}>
+                <ShieldCheck size={17} /> Your account is created only after your college email is verified.
+              </div>
+              <button type="submit" className="btn btn-navy" style={{ width: '100%', padding: '0.75rem' }} disabled={loading || institutions.length === 0}>
+                {loading ? 'Sending verification code…' : 'Send verification code'} <ArrowRight size={16} />
+              </button>
+            </form>
+          ) : (
+            <form onSubmit={verifyCode}>
+              <div className="form-group">
+                <label className="form-label" htmlFor="verification-code">Six-digit verification code</label>
+                <input id="verification-code" className="form-control" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6} value={code} onChange={(event) => setCode(event.target.value.replace(/\D/g, '').slice(0, 6))} placeholder="000000" required />
+              </div>
+              <button type="submit" className="btn btn-navy" style={{ width: '100%', padding: '0.75rem' }} disabled={loading || code.length !== 6}>
+                {loading ? 'Verifying…' : 'Verify email and create account'} <ShieldCheck size={16} />
+              </button>
+              <button type="button" className="btn btn-secondary" style={{ width: '100%', marginTop: '0.75rem', padding: '0.75rem' }} onClick={() => { setStep('details'); setCode(''); setMessage(''); setError(''); }} disabled={loading}>
+                <ArrowLeft size={16} /> Edit registration details
+              </button>
+            </form>
+          )}
 
           <div style={{ textAlign: 'center', marginTop: '1.5rem', paddingTop: '1.25rem', borderTop: '1px solid var(--surface-subtle)', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-            Already have an account?{' '}
-            <Link to="/login" style={{ color: 'var(--brand-blue)', fontWeight: '600' }}>
-              Sign In here
-            </Link>
+            Already have an account? <Link to="/login" style={{ color: 'var(--brand-blue)', fontWeight: '600' }}>Sign in</Link>
           </div>
         </div>
       </div>

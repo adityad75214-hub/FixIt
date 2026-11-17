@@ -26,6 +26,8 @@ from app.api.audit_logs import router as audit_logs_router
 from app.api.incidents import router as incidents_router
 from app.api.feature_requests import router as feature_requests_router
 from app.api.institutions import router as institutions_router
+from app.api.registration import router as registration_router
+from app.api.admin_governance import router as admin_governance_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -49,6 +51,26 @@ async def lifespan(app: FastAPI):
     elif settings.SEED_DEMO_DATA:
         from app.seed import seed_data
         await seed_data()
+
+    # Give legacy institutions a deterministic Primary College Admin if none exists.
+    # This is a one-time, idempotent migration; an existing primary is never overwritten.
+    institutions = await db.institutions.find({"status": "active"}).to_list(None)
+    for institution in institutions:
+        institution_id = str(institution["_id"])
+        existing_primary = await db.users.find_one({
+            "institution_id": institution_id, "role": "admin",
+            "admin_level": "primary", "is_active": True
+        })
+        if not existing_primary:
+            first_admin = await db.users.find({
+                "institution_id": institution_id, "role": "admin",
+                "$or": [{"is_active": True}, {"is_active": {"$exists": False}}]
+            }).sort("created_at", 1).to_list(1)
+            if first_admin:
+                await db.users.update_one(
+                    {"_id": first_admin[0]["_id"], "institution_id": institution_id, "role": "admin"},
+                    {"$set": {"admin_level": "primary"}}
+                )
 
     # Seed routines can create reference documents; attach any newly created legacy records too.
     for collection_name in ("users", "tickets", "campuses", "buildings", "floors", "rooms", "blocks", "campus_locations", "incidents", "knowledge_base", "categories", "departments", "sla_policies", "comments", "feedback", "audit_logs", "feature_requests", "uploads", "notifications", "user_preferences", "knowledge_base_votes"):
@@ -126,6 +148,8 @@ app.include_router(audit_logs_router, prefix=settings.API_V1_STR)
 app.include_router(incidents_router, prefix=settings.API_V1_STR)
 app.include_router(feature_requests_router, prefix=settings.API_V1_STR)
 app.include_router(institutions_router, prefix=settings.API_V1_STR)
+app.include_router(registration_router, prefix=settings.API_V1_STR)
+app.include_router(admin_governance_router, prefix=settings.API_V1_STR)
 
 if __name__ == "__main__":
     import uvicorn

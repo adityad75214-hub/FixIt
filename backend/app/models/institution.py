@@ -30,6 +30,8 @@ class InstitutionResponse(BaseModel):
 class InstitutionAdminInvite(BaseModel):
     email: EmailStr = Field(..., max_length=254)
     name: str = Field(..., min_length=2, max_length=120)
+    designation: Optional[str] = Field(default=None, max_length=120)
+    department: Optional[str] = Field(default=None, max_length=100)
 
 
 class InstitutionAdminInviteAccept(BaseModel):

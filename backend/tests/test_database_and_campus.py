@@ -261,10 +261,19 @@ def test_campus_and_ticket_data_are_isolated_between_institutions(client, admin_
     assert all(item["id"] != foreign_notification_id for item in notifications.json()["notifications"])
 
 
-def test_platform_admin_can_onboard_college_and_provision_college_admin(client):
+def test_platform_admin_can_onboard_college_and_provision_college_admin(client, monkeypatch):
+    import re
     import uuid
+    import app.services.notification_service as mailer
+    from app.core.config import settings
     from app.core.database import get_database
     from app.core.security import create_access_token
+
+    monkeypatch.setattr(settings, "SMTP_HOST", "smtp.test")
+    monkeypatch.setattr(settings, "SMTP_FROM_EMAIL", "noreply@fixit.example")
+    monkeypatch.setattr(settings, "APP_BASE_URL", "https://fixit.example")
+    sent = {}
+    monkeypatch.setattr(mailer, "_send_email", lambda recipient, subject, body: sent.update(recipient=recipient, body=body))
 
     db = get_database()
     sync_db = db.sync_db
@@ -289,11 +298,17 @@ def test_platform_admin_can_onboard_college_and_provision_college_admin(client):
     })
     assert duplicate_domain.status_code == 409
 
-    admin = client.post(f"/api/institutions/{institution_id}/admins", headers=headers, json={
-        "email": f"admin@newcollege.edu", "name": "College Admin", "password": "CollegeAdmin@123"
+    admin = client.post(f"/api/institutions/{institution_id}/admins/invitations", headers=headers, json={
+        "email": "admin@newcollege.edu", "name": "College Admin"
     })
-    assert admin.status_code == 201, admin.text
-    college_token = create_access_token({"sub": admin.json()["id"], "role": "admin", "ver": 0})
+    assert admin.status_code == 202, admin.text
+    assert sent["recipient"] == "admin@newcollege.edu"
+    raw_token = re.search(r"token=([^\s]+)", sent["body"]).group(1)
+    accepted = client.post("/api/institutions/admin-invitations/accept", json={
+        "token": raw_token, "password": "CollegeAdmin@123"
+    })
+    assert accepted.status_code == 201, accepted.text
+    college_token = create_access_token({"sub": accepted.json()["user"]["id"], "role": "admin", "ver": 0})
     college_headers = {"Authorization": f"Bearer {college_token}"}
 
     campus = client.post("/api/campus", headers=college_headers, json={"name": "New College Campus", "code": "MAIN"})
