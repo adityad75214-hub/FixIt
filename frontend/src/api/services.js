@@ -2,6 +2,7 @@ import api from './client';
 
 export const institutionService = {
   list: () => api.get("/institutions"),
+  manageList: () => api.get("/institutions/manage"),
   create: (data) => api.post("/institutions", data),
   update: (id, data) => api.put(`/institutions/${id}`, data),
   createAdmin: (id, data) => api.post(`/institutions/${id}/admins`, data),
