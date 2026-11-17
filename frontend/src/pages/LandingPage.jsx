@@ -7,7 +7,7 @@ import {
 import { knowledgeBaseService } from '../api/services';
 import './LandingPage.css';
 
-const PUBLIC_REGISTRATION_ENABLED = import.meta.env.VITE_PUBLIC_REGISTRATION_ENABLED === 'true';
+const PUBLIC_REGISTRATION_ENABLED = import.meta.env.VITE_PUBLIC_REGISTRATION_ENABLED !== 'false';
 
 export default function LandingPage() {
   const [articles, setArticles] = useState([]);
@@ -49,16 +49,16 @@ export default function LandingPage() {
             <h1>Your Campus.<br />Your Issues.<br /><em>One Solution.</em></h1>
             <p>Report campus problems, track progress, and get them resolved through one simple platform.</p>
             <div className="landing-role-cards">
-              <Link to={PUBLIC_REGISTRATION_ENABLED ? '/register?role=student' : '/login'} className="landing-role-card">
+              <div className="landing-role-card">
                 <span className="landing-role-icon"><UserRound size={27} /></span>
-                <span><strong>Student</strong><small>{PUBLIC_REGISTRATION_ENABLED ? 'Register / Login' : 'Login'} <ArrowRight size={13} /></small></span>
-              </Link>
-              <Link to={PUBLIC_REGISTRATION_ENABLED ? '/register?role=faculty' : '/login'} className="landing-role-card">
+                <span className="landing-role-content"><strong>Student</strong><small><Link to={PUBLIC_REGISTRATION_ENABLED ? '/register?role=student' : '/login?role=student'}>{PUBLIC_REGISTRATION_ENABLED ? 'Register' : 'Registration unavailable'}</Link><span>·</span><Link to="/login?role=student">Login</Link></small></span>
+              </div>
+              <div className="landing-role-card">
                 <span className="landing-role-icon"><GraduationCap size={29} /></span>
-                <span><strong>Faculty</strong><small>{PUBLIC_REGISTRATION_ENABLED ? 'Register / Login' : 'Login'} <ArrowRight size={13} /></small></span>
-              </Link>
+                <span className="landing-role-content"><strong>Faculty</strong><small><Link to={PUBLIC_REGISTRATION_ENABLED ? '/register?role=faculty' : '/login?role=faculty'}>{PUBLIC_REGISTRATION_ENABLED ? 'Register' : 'Registration unavailable'}</Link><span>·</span><Link to="/login?role=faculty">Login</Link></small></span>
+              </div>
             </div>
-            <Link to="/login" className="landing-staff-login"><ShieldCheck size={18} /> Staff &amp; Administrator Login <ArrowRight size={16} /></Link>
+            <Link to="/login?audience=staff" className="landing-staff-login"><ShieldCheck size={18} /> Staff &amp; Administrator Login <ArrowRight size={16} /></Link>
           </div>
           <div className="landing-hero-bottom">
             <div><FileText size={22} /><span><strong>Report</strong><small>Submit an issue</small></span></div>
