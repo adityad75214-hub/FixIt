@@ -53,8 +53,8 @@ export const AuthProvider = ({ children }) => {
     return newUser;
   };
 
-  const completeRegistration = async (email, code) => {
-    const res = await authService.verifyRegistrationCode({ email, code });
+  const completeRegistration = async (email, code, password) => {
+    const res = await authService.verifyRegistrationCode({ email, code, password });
     const { access_token, user: userData } = res.data;
     setAccessToken(access_token);
     setToken(access_token);
