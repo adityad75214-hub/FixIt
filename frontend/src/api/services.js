@@ -10,6 +10,12 @@ export const authService = {
   changePassword: (data) => api.post('/auth/change-password', data),
   getPreferences: () => api.get('/auth/preferences'),
   updatePreferences: (data) => api.put('/auth/preferences', data),
+  uploadFile: (file, purpose, ticketId) => {
+    const form = new FormData();
+    form.append('file', file);
+    return api.post('/uploads', form, { params: { purpose, ...(ticketId ? { ticket_id: ticketId } : {}) }, headers: { 'Content-Type': 'multipart/form-data' } });
+  },
+  downloadUpload: (uploadId) => api.get(`/uploads/${uploadId}`, { responseType: 'blob' }),
 };
 
 export const ticketService = {
