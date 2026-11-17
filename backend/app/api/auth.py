@@ -160,7 +160,9 @@ async def register(user_in: UserCreate, response: Response, request: Request):
             raise HTTPException(status_code=400, detail="That college workspace was not found or is not active.")
         domain = user_in.email.lower().rsplit("@", 1)[-1]
         approved_domains = institution.get("email_domains", [])
-        if approved_domains and domain not in approved_domains:
+        if not approved_domains:
+            raise HTTPException(status_code=403, detail="This college workspace requires an administrator-issued account invitation.")
+        if domain not in approved_domains:
             raise HTTPException(status_code=403, detail="Use your college email address to join this institution.")
         institution_id = str(institution["_id"])
 
