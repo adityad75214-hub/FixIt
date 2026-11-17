@@ -334,6 +334,7 @@ export default function CreateTicketPage() {
   const [categories, setCategories] = useState([]);
   const [campuses, setCampuses] = useState([]);
   const [hierarchy, setHierarchy] = useState([]);
+  const [customLocations, setCustomLocations] = useState([]);
   const [suggestedArticles, setSuggestedArticles] = useState([]);
   const [duplicates, setDuplicates] = useState([]);
   const [hasRestrictedDuplicates, setHasRestrictedDuplicates] = useState(false);
@@ -373,6 +374,7 @@ export default function CreateTicketPage() {
         setCategories(cats);
         setCampuses(campusRows);
         setHierarchy(blds);
+        setCustomLocations(hierRes.data?.locations || []);
         if (campusRows.length > 0) {
           setFormData(prev => ({ ...prev, campus_id: prev.campus_id || campusRows[0].id }));
         }
@@ -453,11 +455,15 @@ export default function CreateTicketPage() {
   );
 
   const allRooms = useMemo(() => {
-    if (selectedFloorObj && selectedFloorObj.rooms?.length > 0) {
-      return selectedFloorObj.rooms.map(r => r.room_number);
-    }
+    const configuredRooms = selectedFloorObj?.rooms?.map(r => r.room_number) || [];
+    const configuredPlaces = customLocations
+      .filter(location => location.building_id === selectedBuildingObj?.id
+        && (!location.floor_id || location.floor_id === selectedFloorObj?.id))
+      .map(location => location.name);
+    const configured = Array.from(new Set([...configuredRooms, ...configuredPlaces]));
+    if (configured.length) return configured;
     return DEMO_MODE_ENABLED && (!formData.campus_id || Boolean(selectedBuildingObj && (!selectedBuildingObj.floors?.length || selectedFloorObj))) ? PREDEFINED_ROOMS : [];
-  }, [selectedFloorObj, selectedBuildingObj, formData.campus_id]);
+  }, [selectedFloorObj, selectedBuildingObj, formData.campus_id, customLocations]);
 
   // All categories
   const allCategories = useMemo(() => {
@@ -860,14 +866,14 @@ export default function CreateTicketPage() {
 
             {/* Room / Lab Number */}
             <div className="form-group">
-              <label className="form-label">Room / Lab Number *</label>
+              <label className="form-label">Room / Classroom / Other Location *</label>
               <input
                 type="text"
                 list="room-suggestions"
                 name="room"
                 data-testid="room-select"
                 className="form-control"
-                placeholder="Select a configured room"
+                placeholder="Classroom, lab, hostel room or other location"
                 value={formData.room}
                 onChange={handleChange}
                 required={formData.location_type === 'campus'}
