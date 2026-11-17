@@ -46,3 +46,31 @@ def test_valid_production_configuration_is_accepted():
 def test_unsafe_production_configuration_is_rejected(override):
     with pytest.raises(ValidationError):
         valid_production_settings(**override)
+
+
+@pytest.mark.parametrize(
+    "override",
+    [
+        {"ALLOWED_HOSTS": ["fixit.example.com", "localhost"]},
+        {"ALLOWED_HOSTS": ["https://fixit.example.com"]},
+        {"BACKEND_CORS_ORIGINS": ["https://fixit.example.com/admin"]},
+        {"APP_BASE_URL": "http://fixit.example.com"},
+        {"SMTP_HOST": "smtp.example.com", "SMTP_FROM_EMAIL": "notifications@fixit.example.com"},
+        {"SMTP_HOST": "smtp.example.com", "SMTP_FROM_EMAIL": "notifications@fixit.example.com", "APP_BASE_URL": "https://fixit.example.com", "SMTP_USERNAME": "mailer"},
+    ],
+)
+def test_production_configuration_rejects_incomplete_or_unsafe_public_endpoints(override):
+    with pytest.raises(ValidationError):
+        valid_production_settings(**override)
+
+
+def test_production_configuration_accepts_complete_smtp_settings():
+    settings = valid_production_settings(
+        APP_BASE_URL="https://fixit.example.com",
+        SMTP_HOST="smtp.example.com",
+        SMTP_PORT=587,
+        SMTP_USERNAME="mailer",
+        SMTP_PASSWORD="a-long-smtp-password",
+        SMTP_FROM_EMAIL="notifications@fixit.example.com",
+    )
+    assert settings.APP_BASE_URL == "https://fixit.example.com"
