@@ -33,6 +33,11 @@ async def list_articles(
         ]
 
     docs = await db.knowledge_base.find(query).sort("views", -1).to_list(50)
+    if current_user.get("role") in ("staff", "admin"):
+        drafts = await db.knowledge_base.find({**{k: v for k, v in query.items() if k != "is_published"}, "is_published": False}).sort("updated_at", -1).to_list(50)
+        docs.extend(drafts)
+        docs = list({str(d["_id"]): d for d in docs}.values())[:100]
+
     return [
         KBArticleResponse(
             id=str(d["_id"]),
