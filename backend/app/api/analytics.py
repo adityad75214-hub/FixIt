@@ -121,6 +121,7 @@ async def get_dashboard_analytics(current_user: dict = Depends(require_roles("ad
 
     # Feedback ratings
     feedback_pipeline = [
+        {"$match": {"institution_id": institution_id_for(current_user)}},
         {"$group": {"_id": None, "average_rating": {"$avg": "$rating"}}}
     ]
     feedback_summary = await db.feedback.aggregate(feedback_pipeline).to_list(1)
