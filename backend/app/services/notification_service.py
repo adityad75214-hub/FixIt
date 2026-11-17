@@ -73,10 +73,13 @@ async def send_notification(
         print(f"Warning: Failed to create notification: {e}")
 
 
-async def notify_admins(title: str, message: str, link: Optional[str] = None, notif_type: str = "admin_alert"):
+async def notify_admins(title: str, message: str, link: Optional[str] = None, notif_type: str = "admin_alert", institution_id: Optional[str] = None):
     try:
         db = get_database()
-        admins = await db.users.find({"role": "admin", "is_active": True}).to_list(20)
+        query = {"role": "admin", "is_active": True}
+        if institution_id:
+            query["institution_id"] = institution_id
+        admins = await db.users.find(query).to_list(20)
         for admin in admins:
             await send_notification(str(admin["_id"]), title, message, link, notif_type)
     except Exception as e:
