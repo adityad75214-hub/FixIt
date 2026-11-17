@@ -53,6 +53,7 @@ async def request_registration_code(payload: RegistrationRequest, request: Reque
 
     db = get_database()
     email = str(payload.email).strip().lower()
+    identifier = payload.identifier.strip().upper()
     institution = await db.institutions.find_one({"slug": payload.institution_slug.lower(), "status": "active"})
     if not institution:
         raise HTTPException(status_code=404, detail="The selected institution is unavailable.")
@@ -78,7 +79,7 @@ async def request_registration_code(payload: RegistrationRequest, request: Reque
     identifier_query = {
         "institution_id": str(institution["_id"]),
         "role": payload.role,
-        "identifier": payload.identifier.strip(),
+        "identifier": identifier,
     }
     if await db.users.find_one(identifier_query):
         raise HTTPException(status_code=409, detail=f"This {payload.role} ID is already registered in the selected institution.")
@@ -110,7 +111,7 @@ async def request_registration_code(payload: RegistrationRequest, request: Reque
         "email": email,
         "role": payload.role,
         "department": payload.department.strip(),
-        "identifier": payload.identifier.strip(),
+        "identifier": identifier,
         "phone": payload.phone,
         "code_hash": __import__("hashlib").sha256((settings.SECRET_KEY + ":" + code).encode("utf-8")).hexdigest(),
         "attempts": 0,
@@ -119,7 +120,13 @@ async def request_registration_code(payload: RegistrationRequest, request: Reque
         "expires_at": now + timedelta(minutes=CODE_TTL_MINUTES),
     }
     await db.pending_registrations.delete_one({"email": email})
-    await db.pending_registrations.insert_one(pending)
+    try:
+        await db.pending_registrations.insert_one(pending)
+    except DuplicateKeyError:
+        raise HTTPException(
+            status_code=409,
+            detail=f"This {payload.role} ID already has a pending registration in the selected institution.",
+        ) from None
 
     from app.services.notification_service import _send_email
     body = (
@@ -213,7 +220,13 @@ async def verify_registration_code(payload: VerifyRegistrationCode, request: Req
     try:
         await db.users.insert_one(user)
     except DuplicateKeyError:
-        raise HTTPException(status_code=409, detail="An account with this email already exists. Please sign in.") from None
+        await db.pending_registrations.delete_one({"_id": pending["_id"]})
+        if await db.users.find_one({"email": email}):
+            raise HTTPException(status_code=409, detail="An account with this email already exists. Please sign in.") from None
+        raise HTTPException(
+            status_code=409,
+            detail=f"This {pending['role']} ID is already registered in the selected institution.",
+        ) from None
 
     await record_audit_log(
         action="USER_REGISTERED_EMAIL_VERIFIED",
