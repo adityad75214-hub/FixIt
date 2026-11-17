@@ -29,6 +29,7 @@ const FeatureRequestsPage = lazy(() => import('./pages/FeatureRequestsPage'));
 const CampusManagementPage = lazy(() => import('./pages/CampusManagementPage'));
 const CategoryManagementPage = lazy(() => import('./pages/CategoryManagementPage'));
 const IncidentManagementPage = lazy(() => import('./pages/IncidentManagementPage'));
+const PlatformAdminDashboard = lazy(() => import('./pages/PlatformAdminDashboard'));
 
 const PUBLIC_REGISTRATION_ENABLED = import.meta.env.DEV && import.meta.env.VITE_PUBLIC_REGISTRATION_ENABLED !== 'false';
 
@@ -52,6 +53,9 @@ function AppLayout() {
 // Router switcher for role-specific dashboard
 function RoleDashboard() {
   const { user } = useAuth();
+  if (user?.role === 'platform_admin') {
+    return <PlatformAdminDashboard />;
+  }
   if (user?.role === 'admin') {
     return <AdminDashboard />;
   } else if (user?.role === 'staff') {
