@@ -103,7 +103,7 @@ export default function Sidebar({ isOpen, onClose }) {
           )}
           {role === 'staff' && (
             <>
-              <div style={{ fontSize: '0.6875rem', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.08em', color: '#60A5FA', padding: '1.25rem 0.5rem 0.625rem 0.5rem' }}>{t('IT Staff Portal')}
+              <div style={{ fontSize: '0.6875rem', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.08em', color: '#60A5FA', padding: '1.25rem 0.5rem 0.625rem 0.5rem' }}>{t('Support Staff Portal')}
               </div>
               <NavLink to="/tickets?assigned_to_me=true" style={linkStyle} onClick={onClose}>
                 <UserCheck size={18} />{t('My Assignments')}
