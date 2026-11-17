@@ -81,6 +81,9 @@ export default function App() {
             <Route element={<ProtectedRoute />}>
               <Route element={<AppLayout />}>
                 <Route path="/dashboard" element={<RoleDashboard />} />
+                <Route element={<ProtectedRoute allowedRoles={['platform_admin']} />}>
+                  <Route path="/platform/institutions" element={<PlatformAdminDashboard />} />
+                </Route>
                 <Route path="/tickets" element={<TicketListPage />} />
                 <Route path="/tickets/new" element={<CreateTicketPage />} />
                 <Route path="/tickets/:id" element={<TicketDetailPage />} />
