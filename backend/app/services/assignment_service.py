@@ -22,6 +22,7 @@ async def get_staff_workload(institution_id: Optional[str] = None) -> List[Dict[
         })
         resolved_count = await db.tickets.count_documents({
             "assigned_to.id": staff_id,
+            **({"institution_id": institution_id} if institution_id else {}),
             "status": {"$in": [TicketStatus.RESOLVED.value, TicketStatus.CLOSED.value]}
         })
 
