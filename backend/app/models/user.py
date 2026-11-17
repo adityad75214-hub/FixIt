@@ -17,6 +17,7 @@ class UserBase(BaseModel):
     phone: Optional[str] = Field(default=None, max_length=30)
     identifier: Optional[str] = Field(default=None, max_length=100)  # Roll number or Faculty/Staff ID
     specialization: Optional[List[str]] = Field(default=None, max_length=20)  # For IT Staff
+    avatar_url: Optional[str] = Field(default=None, max_length=2048)
 
 class UserCreate(UserBase):
     password: str = Field(..., min_length=12, max_length=128)
@@ -29,6 +30,7 @@ class UserUpdate(BaseModel):
     name: Optional[str] = Field(default=None, min_length=1, max_length=120)
     phone: Optional[str] = Field(default=None, max_length=30)
     department: Optional[str] = Field(default=None, max_length=100)
+    avatar_url: Optional[str] = Field(default=None, max_length=2048)
     specialization: Optional[List[Annotated[str, Field(max_length=80)]]] = None
     is_active: Optional[bool] = None
     role: Optional[UserRole] = None
@@ -47,3 +49,9 @@ class Token(BaseModel):
     access_token: str
     token_type: str = "bearer"
     user: UserResponse
+
+
+class UserPreferences(BaseModel):
+    email_notifications: bool = True
+    in_app_notifications: bool = True
+    language: str = Field(default="en", pattern="^(en|hi)$")
