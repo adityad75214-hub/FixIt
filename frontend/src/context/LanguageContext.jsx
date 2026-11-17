@@ -3,7 +3,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 const translations = {
   en: {},
   hi: {
-    'Main Menu': 'मुख्य मेनू', Dashboard: 'डैशबोर्ड', 'Report Issue': 'समस्या दर्ज करें',
+    'Main Menu': 'मुख्य मेनू', Dashboard: 'डैशबोर्ड', 'All Tickets': 'सभी अनुरोध', 'Ticket Queue': 'अनुरोध सूची', 'My Tickets': 'मेरे अनुरोध', 'Enterprise Helpdesk': 'संस्थान सहायता केंद्र', 'Report Issue': 'समस्या दर्ज करें',
     'All Tickets': 'सभी अनुरोध', 'Ticket Queue': 'अनुरोध सूची', 'My Tickets': 'मेरे अनुरोध',
     'Knowledge Base': 'ज्ञान केंद्र', 'Feature Roadmap': 'फ़ीचर रोडमैप', 'Suggest a Feature': 'फ़ीचर सुझाएँ',
     'Campus Incidents': 'कैंपस घटनाएँ', 'IT Staff Portal': 'सहायता कर्मचारी पोर्टल',
