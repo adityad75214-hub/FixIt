@@ -26,8 +26,12 @@ async def create_institution(payload: InstitutionCreate, current_user: dict = De
         await db.institutions.insert_one(doc)
     except DuplicateKeyError:
         raise HTTPException(status_code=409, detail="That institution slug or email domain is already registered.") from None
-    # Provision a safe baseline for each new college from platform defaults.
+    # Ensure a default template exists, including installations without demo seeding.
     default_categories = await db.categories.find({"institution_id": "INST-DEFAULT"}).to_list(None)
+    if not default_categories:
+        from app.seed_reference_data import seed_reference_data
+        await seed_reference_data()
+        default_categories = await db.categories.find({"institution_id": "INST-DEFAULT"}).to_list(None)
     if default_categories:
         await db.categories.insert_many([
             {**{key: value for key, value in item.items() if key != "_id"}, "_id": f"CAT-{uuid.uuid4().hex[:8].upper()}", "institution_id": institution_id}
