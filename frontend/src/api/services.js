@@ -5,7 +5,8 @@ export const institutionService = {
   manageList: () => api.get("/institutions/manage"),
   create: (data) => api.post("/institutions", data),
   update: (id, data) => api.put(`/institutions/${id}`, data),
-  createAdmin: (id, data) => api.post(`/institutions/${id}/admins`, data),
+  inviteAdmin: (id, data) => api.post(`/institutions/${id}/admins/invitations`, data),
+  acceptAdminInvitation: (data) => api.post('/institutions/admin-invitations/accept', data),
 };
 
 export const authService = {
