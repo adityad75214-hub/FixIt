@@ -487,6 +487,7 @@ export default function CreateTicketPage() {
   const handleDomainChange = (e) => {
     const problem_domain = e.target.value;
     const defaultCategoryByDomain = {
+      technical: 'Network and Wi-Fi',
       academic: 'Academic Support',
       administrative: 'Administrative and Documentation',
       facilities: 'Campus Facilities and Maintenance',
