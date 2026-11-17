@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { BookOpen, Search, ThumbsUp, ThumbsDown, Plus, Eye, Tag } from 'lucide-react';
+import { BookOpen, Search, ThumbsUp, ThumbsDown, Plus, Eye, Tag, Pencil, Trash2, EyeOff } from 'lucide-react';
 import { knowledgeBaseService, categoryService } from '../api/services';
 import { useAuth } from '../context/AuthContext';
 import Modal from '../components/Modal';
@@ -15,6 +15,8 @@ export default function KnowledgeBasePage() {
   const [search, setSearch] = useState('');
   const [activeArticle, setActiveArticle] = useState(null);
   const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [editingArticleId, setEditingArticleId] = useState(null);
+  const [articleError, setArticleError] = useState('');
   const [newArticle, setNewArticle] = useState({
     title: '',
     category: '',
@@ -71,18 +73,43 @@ export default function KnowledgeBasePage() {
     }
   };
 
+  const openEditArticle = (article) => {
+    setEditingArticleId(article.id);
+    setNewArticle({ title: article.title, category: article.category, content: article.content, tags: (article.tags || []).join(', '), is_published: article.is_published !== false });
+    setArticleError('');
+    setCreateModalOpen(true);
+  };
+
+  const handleDeleteArticle = async (article) => {
+    if (!window.confirm(`Delete “${article.title}”? This also removes its feedback votes.`)) return;
+    try {
+      await knowledgeBaseService.deleteArticle(article.id);
+      if (activeArticle?.id === article.id) setActiveArticle(null);
+      await fetchArticles();
+    } catch (err) {
+      window.alert(err.response?.data?.detail || 'Could not delete article.');
+    }
+  };
+
   const handleCreateSubmit = async (e) => {
     e.preventDefault();
     try {
-      await knowledgeBaseService.createArticle({
+      const payload = {
         ...newArticle,
         tags: newArticle.tags.split(',').map(t => t.trim()).filter(Boolean)
-      });
+      };
+      if (editingArticleId) {
+        await knowledgeBaseService.updateArticle(editingArticleId, payload);
+      } else {
+        await knowledgeBaseService.createArticle(payload);
+      }
       setCreateModalOpen(false);
-      setNewArticle({ title: '', category: categories[0]?.name || '', content: '', tags: '' });
-      fetchArticles();
+      setEditingArticleId(null);
+      setArticleError('');
+      setNewArticle({ title: '', category: categories[0]?.name || '', content: '', tags: '', is_published: true });
+      await fetchArticles();
     } catch (err) {
-      alert(err.response?.data?.detail || "Failed to create article");
+      setArticleError(err.response?.data?.detail || (editingArticleId ? 'Failed to update article.' : 'Failed to create article.'));
     }
   };
 
@@ -131,6 +158,7 @@ export default function KnowledgeBasePage() {
       </div>
 
       {/* Articles Grid */}
+      {articles.length === 0 && <div className="card" role="status" style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2rem' }}>No articles found. Try another search or category.</div>}
       <div className="grid-2">
         {articles.map((art) => (
           <div
@@ -161,6 +189,12 @@ export default function KnowledgeBasePage() {
               <span style={{ color: '#059669', fontWeight: '600' }}>
                 👍 {art.helpful_count} found helpful
               </span>
+              {isStaffOrAdmin && <div style={{ display: 'flex', gap: '0.4rem', marginTop: '0.75rem' }} onClick={(e) => e.stopPropagation()}>
+                <button type="button" className="btn btn-secondary btn-sm" onClick={() => openEditArticle(art)}><Pencil size={13} /> Edit</button>
+                {art.is_published !== false && <span className="badge badge-assigned">Published</span>}
+                {art.is_published === false && <span className="badge">Draft</span>}
+                {user?.role === 'admin' && <button type="button" className="btn btn-secondary btn-sm" onClick={() => handleDeleteArticle(art)}><Trash2 size={13} /> Delete</button>}
+              </div>}
             </div>
           </div>
         ))}
@@ -209,11 +243,12 @@ export default function KnowledgeBasePage() {
       {/* Create Article Modal (Staff/Admin) */}
       <Modal
         isOpen={createModalOpen}
-        onClose={() => setCreateModalOpen(false)}
-        title="Create Knowledge Base Article"
+        onClose={() => { setCreateModalOpen(false); setEditingArticleId(null); setArticleError(''); }}
+        title={editingArticleId ? 'Edit Knowledge Base Article' : 'Create Knowledge Base Article'}
         maxWidth="650px"
       >
         <form onSubmit={handleCreateSubmit}>
+          {articleError && <p role="alert" style={{ color: 'var(--danger, #b91c1c)' }}>{articleError}</p>}
           <div className="form-group">
             <label className="form-label">Article Title *</label>
             <input
@@ -252,6 +287,8 @@ export default function KnowledgeBasePage() {
             />
           </div>
 
+          <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}><input type="checkbox" checked={newArticle.is_published !== false} onChange={(e) => setNewArticle({ ...newArticle, is_published: e.target.checked })} /> Publish immediately (uncheck to save as draft)</label>
+
           <div className="form-group">
             <label className="form-label">Tags (comma-separated)</label>
             <input
@@ -264,7 +301,7 @@ export default function KnowledgeBasePage() {
           </div>
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1rem' }}>
-            <button type="button" className="btn btn-secondary" onClick={() => setCreateModalOpen(false)}>Cancel</button>
+            <button type="button" className="btn btn-secondary" onClick={() => { setCreateModalOpen(false); setEditingArticleId(null); setArticleError(''); }}>Cancel</button>
             <button type="submit" className="btn btn-navy" disabled={!newArticle.category}>Publish Article</button>
           </div>
         </form>
