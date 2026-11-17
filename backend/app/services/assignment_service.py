@@ -5,15 +5,19 @@ from app.core.audit import record_audit_log
 from app.models.ticket import TicketStatus
 from app.services.notification_service import notify_admins
 
-async def get_staff_workload() -> List[Dict[str, Any]]:
+async def get_staff_workload(institution_id: Optional[str] = None) -> List[Dict[str, Any]]:
     db = get_database()
-    staff_members = await db.users.find({"role": "staff", "is_active": True}).to_list(None)
+    staff_query = {"role": "staff", "is_active": True}
+    if institution_id:
+        staff_query["institution_id"] = institution_id
+    staff_members = await db.users.find(staff_query).to_list(None)
 
     workload_list = []
     for staff in staff_members:
         staff_id = str(staff["_id"])
         active_count = await db.tickets.count_documents({
             "assigned_to.id": staff_id,
+            **({"institution_id": institution_id} if institution_id else {}),
             "status": {"$in": [TicketStatus.ASSIGNED.value, TicketStatus.IN_PROGRESS.value, TicketStatus.ON_HOLD.value, TicketStatus.REOPENED.value]}
         })
         resolved_count = await db.tickets.count_documents({
@@ -33,11 +37,11 @@ async def get_staff_workload() -> List[Dict[str, Any]]:
 
     return workload_list
 
-async def find_best_staff_for_ticket(category: str) -> Optional[Dict[str, Any]]:
+async def find_best_staff_for_ticket(category: str, institution_id: Optional[str] = None) -> Optional[Dict[str, Any]]:
     """Automatic assignment with transparent scoring:
     Score = Specialization Match (40 pts) + Availability/Active Status (20 pts) + Workload Capacity (up to 40 pts).
     If no eligible staff is found, alerts administrators."""
-    workload_list = await get_staff_workload()
+    workload_list = await get_staff_workload(institution_id)
     if not workload_list:
         # Notify admins if no eligible staff
         await notify_admins(
@@ -81,7 +85,10 @@ async def find_best_staff_for_ticket(category: str) -> Optional[Dict[str, Any]]:
     best = scored_candidates[0]
 
     db = get_database()
-    staff_user = await db.users.find_one({"_id": best["staff_id"]})
+    staff_query = {"_id": best["staff_id"]}
+    if institution_id:
+        staff_query["institution_id"] = institution_id
+    staff_user = await db.users.find_one(staff_query)
     if staff_user:
         return {
             "id": str(staff_user["_id"]),
