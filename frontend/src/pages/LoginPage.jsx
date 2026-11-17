@@ -64,7 +64,7 @@ export default function LoginPage() {
           </Link>
           <h2 style={{ fontSize: '1.25rem', fontWeight: '700', color: 'var(--text-main)' }}>Sign in to your account</h2>
           <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
-            College IT Helpdesk & Issue Management System
+            Campus Support & Issue Resolution Platform
           </p>
         </div>
 
