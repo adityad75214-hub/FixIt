@@ -4,11 +4,13 @@ import { User, Lock, CheckCircle2, AlertCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { authService } from '../api/services';
 import { useTheme } from '../context/ThemeContext';
+import { useLanguage } from '../context/LanguageContext';
 
 export default function ProfilePage() {
   const { user, refreshUser, logout } = useAuth();
   const navigate = useNavigate();
   const { theme, setTheme } = useTheme();
+  const { t, setLanguage } = useLanguage();
   const [preferences, setPreferences] = useState({ email_notifications: true, in_app_notifications: true, language: 'en' });
   const [preferencesMsg, setPreferencesMsg] = useState('');
   const [avatarPreview, setAvatarPreview] = useState('');
@@ -52,7 +54,7 @@ export default function ProfilePage() {
   };
 
   useEffect(() => {
-    authService.getPreferences().then(res => setPreferences(res.data)).catch(() => {});
+    authService.getPreferences().then(res => { setPreferences(res.data); setLanguage(res.data.language || 'en'); }).catch(() => {});
   }, []);
 
   const handleSavePreferences = async (e) => {
@@ -60,6 +62,7 @@ export default function ProfilePage() {
     try {
       const res = await authService.updatePreferences(preferences);
       setPreferences(res.data);
+      setLanguage(res.data.language || 'en');
       setPreferencesMsg('Preferences saved.');
     } catch (err) {
       setPreferencesMsg(err.response?.data?.detail || 'Could not save preferences.');
@@ -114,8 +117,8 @@ export default function ProfilePage() {
     <div className="page-wrapper" style={{ maxWidth: '800px' }}>
       <div className="page-header">
         <div>
-          <h1 className="page-title">My Profile & Security Settings</h1>
-          <p className="page-subtitle">Manage personal contact details and authentication credentials</p>
+          <h1 className="page-title">{t('My Profile & Security Settings')}</h1>
+          <p className="page-subtitle">{t('Manage personal contact details and authentication credentials')}</p>
         </div>
       </div>
 
@@ -170,9 +173,9 @@ export default function ProfilePage() {
           </div>
 
           <div className="form-group">
-            <label className="form-label">Profile picture</label>
+            <label className="form-label">{t('Profile picture')}</label>
             <input type="file" className="form-control" accept="image/jpeg,image/png,image/webp,image/gif" onChange={handleAvatarUpload} />
-            <small style={{ color: 'var(--text-muted)' }}>Upload JPG, PNG, WEBP or GIF. Maximum size: 5 MB.</small>
+            <small style={{ color: 'var(--text-muted)' }}>{t('Upload JPG, PNG, WEBP or GIF. Maximum size: 5 MB.')}</small>
             {avatarUploadMsg && <p role="status" style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: '0.4rem' }}>{avatarUploadMsg}</p>}
           </div>
           <div className="grid-2">
@@ -199,27 +202,27 @@ export default function ProfilePage() {
           </div>
 
           <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-            <button type="submit" className="btn btn-navy">Save Profile</button>
+            <button type="submit" className="btn btn-navy">{t('Save Profile')}</button>
           </div>
         </form>
       </div>
 
       {/* Personal preferences */}
       <div className="card" style={{ marginBottom: '1.5rem' }}>
-        <h3 style={{ fontSize: '1rem', fontWeight: '600', color: 'var(--text-main)', marginBottom: '1rem' }}>Preferences</h3>
+        <h3 style={{ fontSize: '1rem', fontWeight: '600', color: 'var(--text-main)', marginBottom: '1rem' }> {t('Preferences')}</h3>
         {preferencesMsg && <p role="status" style={{ color: 'var(--text-muted)', marginBottom: '0.75rem' }}>{preferencesMsg}</p>}
         <form onSubmit={handleSavePreferences}>
           <div className="form-group">
-            <label className="form-label">Appearance</label>
+            <label className="form-label">{t('Appearance')}</label>
             <select className="form-control" value={theme} onChange={(e) => setTheme(e.target.value)}>
-              <option value="light">Light theme</option>
-              <option value="dark">Dark theme</option>
+              <option value="light">{t('Light theme')}</option>
+              <option value="dark">{t('Dark theme')}</option>
             </select>
           </div>
           <div className="form-group">
-            <label className="form-label">Preferred language</label>
+            <label className="form-label">{t('Preferred language')}</label>
             <select className="form-control" value={preferences.language} onChange={(e) => setPreferences({ ...preferences, language: e.target.value })}>
-              <option value="en">English</option>
+              <option value="en">{t('English')}</option>
               <option value="hi">हिन्दी</option>
             </select>
             <small style={{ color: 'var(--text-muted)' }}>Saved as your language preference; full interface translation is a separate localization task.</small>
@@ -233,7 +236,7 @@ export default function ProfilePage() {
             Email notification preference
           </label>
           <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-            <button type="submit" className="btn btn-navy">Save Preferences</button>
+            <button type="submit" className="btn btn-navy">{t('Save Preferences')}</button>
           </div>
         </form>
       </div>
@@ -241,7 +244,7 @@ export default function ProfilePage() {
       {/* Change Password Form */}
       <div className="card">
         <h3 style={{ fontSize: '1rem', fontWeight: '600', color: 'var(--text-main)', marginBottom: '1rem' }}>
-          Change Password
+          {t('Change Password')}
         </h3>
 
         {passMsg && (
@@ -258,7 +261,7 @@ export default function ProfilePage() {
 
         <form onSubmit={handleChangePassword}>
           <div className="form-group">
-            <label className="form-label">Current Password</label>
+            <label className="form-label">{t('Current Password')}</label>
             <input
               type="password"
               className="form-control"
@@ -270,7 +273,7 @@ export default function ProfilePage() {
 
           <div className="grid-2">
             <div className="form-group">
-              <label className="form-label">New Password</label>
+              <label className="form-label">{t('New Password')}</label>
               <input
                 type="password"
                 className="form-control"
@@ -282,7 +285,7 @@ export default function ProfilePage() {
             </div>
 
             <div className="form-group">
-              <label className="form-label">Confirm New Password</label>
+              <label className="form-label">{t('Confirm New Password')}</label>
               <input
                 type="password"
                 className="form-control"
@@ -295,7 +298,7 @@ export default function ProfilePage() {
           </div>
 
           <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-            <button type="submit" className="btn btn-navy">Update Password</button>
+            <button type="submit" className="btn btn-navy">{t('Update Password')}</button>
           </div>
         </form>
       </div>
