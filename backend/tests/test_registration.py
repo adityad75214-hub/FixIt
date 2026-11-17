@@ -72,6 +72,8 @@ def test_student_can_register_after_college_email_otp(client, monkeypatch):
     stored = db_manager.db.sync_db.users.find_one({"email": email})
     assert stored["email_verified"] is True
     assert stored["approval_method"] == "institution_email_otp"
+    assert stored["membership_verification_status"] == "email_verified"
+    assert stored["is_active"] is True
     assert db_manager.db.sync_db.pending_registrations.find_one({"email": email}) is None
 
 
@@ -118,7 +120,6 @@ def test_incorrect_registration_code_does_not_create_user(client, monkeypatch):
         "institution_slug": slug,
         "name": "Pending User",
         "email": email,
-        "password": "SecurePassphrase123!",
         "role": "student",
         "department": "Computer Science",
         "identifier": "USN-OTP-002",
