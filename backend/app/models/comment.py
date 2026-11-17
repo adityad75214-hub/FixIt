@@ -1,4 +1,5 @@
 from typing import Optional, List, Dict, Any, Annotated
+import re
 from pydantic import BaseModel, Field, field_validator
 
 class CommentCreate(BaseModel):
@@ -10,7 +11,7 @@ class CommentCreate(BaseModel):
     @classmethod
     def validate_attachment_urls(cls, values):
         for value in values or []:
-            if not value.startswith("https://"):
+            if not (value.startswith("https://") or re.fullmatch(r"/api/uploads/[a-f0-9]{32}", value)):
                 raise ValueError("Attachments must use secure HTTPS URLs.")
         return values
 
