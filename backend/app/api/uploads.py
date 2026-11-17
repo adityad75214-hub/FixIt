@@ -43,6 +43,10 @@ def _detect_file_type(data: bytes):
     return None
 
 
+def _can_access_profile_upload(document: dict, user: dict) -> bool:
+    return document.get("user_id") == user.get("id") or user.get("role") == "admin"
+
+
 async def _ticket_for_user(db, ticket_id: str, user: dict, *, for_upload: bool):
     ticket = await db.tickets.find_one({"$or": [{"_id": ticket_id}, {"ticket_id": ticket_id}]})
     if not ticket:
@@ -129,7 +133,7 @@ async def download_file(
     if document.get("purpose") == "ticket":
         await _ticket_for_user(db, document.get("ticket_id", ""), current_user, for_upload=False)
     elif document.get("purpose") == "profile":
-        if document.get("user_id") != current_user.get("id") and current_user.get("role") != "admin":
+        if not _can_access_profile_upload(document, current_user):
             raise HTTPException(status_code=404, detail="File not found")
     else:
         raise HTTPException(status_code=404, detail="File not found")
