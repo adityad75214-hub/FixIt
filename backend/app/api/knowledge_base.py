@@ -186,6 +186,13 @@ async def update_article(
 
     await db.knowledge_base.update_one({"_id": article_id}, {"$set": update_data})
     updated = await db.knowledge_base.find_one({"_id": article_id})
+    await record_audit_log(
+        action="KB_ARTICLE_UPDATED",
+        resource_type="knowledge_base",
+        resource_id=article_id,
+        actor=current_user,
+        details={"changed_fields": sorted(update_data.keys())}
+    )
 
     return KBArticleResponse(
         id=str(updated["_id"]),
@@ -208,7 +215,11 @@ async def delete_article(
     current_user: dict = Depends(require_roles("admin"))
 ):
     db = get_database()
+    article = await db.knowledge_base.find_one({"_id": article_id})
+    if not article:
+        raise HTTPException(status_code=404, detail="Article not found")
     await db.knowledge_base.delete_one({"_id": article_id})
+    await db.knowledge_base_votes.delete_many({"article_id": article_id})
     await record_audit_log(
         action="KB_ARTICLE_DELETED",
         resource_type="knowledge_base",
