@@ -54,4 +54,4 @@ class Token(BaseModel):
 class UserPreferences(BaseModel):
     email_notifications: bool = True
     in_app_notifications: bool = True
-    language: str = Field(default="en", pattern="^(en|hi)$")
+    language: str = Field(default="en", pattern="^(en|hi|kn|ta|te|ml|mr|bn)$")
