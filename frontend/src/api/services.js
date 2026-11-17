@@ -7,6 +7,12 @@ export const institutionService = {
   update: (id, data) => api.put(`/institutions/${id}`, data),
   inviteAdmin: (id, data) => api.post(`/institutions/${id}/admins/invitations`, data),
   acceptAdminInvitation: (data) => api.post('/institutions/admin-invitations/accept', data),
+  listAdministrators: (id) => api.get(`/institutions/${id}/administrators`),
+  requestAdministrator: (id, data) => api.post(`/institutions/${id}/admin-requests`, data),
+  listAdministratorRequests: (id) => api.get(`/institutions/${id}/admin-requests`),
+  approveAdministratorRequest: (id, requestId) => api.post(`/institutions/${id}/admin-requests/${requestId}/approve`),
+  rejectAdministratorRequest: (id, requestId) => api.post(`/institutions/${id}/admin-requests/${requestId}/reject`),
+  updateAdministratorStatus: (id, userId, is_active) => api.patch(`/institutions/${id}/administrators/${userId}`, { is_active }),
 };
 
 export const authService = {
