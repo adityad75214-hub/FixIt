@@ -16,7 +16,7 @@ import {
   ShieldAlert,
   ArrowLeft
 } from 'lucide-react';
-import { ticketService, commentService, assignmentService, feedbackService, userService } from '../api/services';
+import { ticketService, commentService, assignmentService, feedbackService, userService, authService } from '../api/services';
 import { useAuth } from '../context/AuthContext';
 import StatusBadge from '../components/StatusBadge';
 import PriorityBadge from '../components/PriorityBadge';
@@ -34,6 +34,7 @@ export default function TicketDetailPage() {
   const [commentText, setCommentText] = useState('');
   const [attachmentUrl, setAttachmentUrl] = useState('');
   const [commentAttachments, setCommentAttachments] = useState([]);
+  const [uploadingAttachment, setUploadingAttachment] = useState(false);
   const [isInternalNote, setIsInternalNote] = useState(false);
   const [submittingComment, setSubmittingComment] = useState(false);
 
@@ -78,6 +79,48 @@ export default function TicketDetailPage() {
         .catch(err => console.error(err));
     }
   }, [id]);
+
+  const handleAttachmentUpload = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    if (commentAttachments.length >= 5) {
+      alert('A message can include up to five attachments.');
+      return;
+    }
+    setUploadingAttachment(true);
+    try {
+      const result = await authService.uploadFile(file, 'ticket', id);
+      setCommentAttachments(prev => [...prev, result.data.url]);
+    } catch (err) {
+      alert(err.response?.data?.detail || 'Attachment upload failed.');
+    } finally {
+      setUploadingAttachment(false);
+    }
+  };
+
+  const handleOpenAttachment = async (url) => {
+    const uploadId = url.startsWith('/api/uploads/') ? url.slice('/api/uploads/'.length) : '';
+    if (!/^[a-f0-9]{32}$/.test(uploadId)) {
+      window.open(url, '_blank', 'noopener,noreferrer');
+      return;
+    }
+    try {
+      const result = await authService.downloadUpload(uploadId);
+      const objectUrl = URL.createObjectURL(result.data);
+      const link = document.createElement('a');
+      link.href = objectUrl;
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      link.download = '';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 60000);
+    } catch (err) {
+      alert(err.response?.data?.detail || 'Could not open this attachment.');
+    }
+  };
 
   const handlePostComment = async (e) => {
     e.preventDefault();
@@ -318,9 +361,9 @@ export default function TicketDetailPage() {
                     {c.attachments?.length > 0 && (
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginTop: '0.75rem' }}>
                         {c.attachments.map((url, index) => (
-                          <a key={index} href={url} target="_blank" rel="noopener noreferrer" className="btn btn-secondary btn-sm">
+                          <button key={index} type="button" onClick={() => handleOpenAttachment(url)} className="btn btn-secondary btn-sm">
                             View attachment {index + 1}
-                          </a>
+                          </button>
                         ))}
                       </div>
                     )}
@@ -343,12 +386,11 @@ export default function TicketDetailPage() {
               </div>
 
               <div className="form-group" style={{ marginBottom: '0.75rem' }}>
-                <label className="form-label">Attach a file or image using a secure HTTPS link (up to 5)</label>
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
-                  <input type="url" className="form-control" placeholder="https://..." value={attachmentUrl} onChange={(e) => setAttachmentUrl(e.target.value)} />
-                  <button type="button" className="btn btn-secondary btn-sm" disabled={!attachmentUrl.startsWith('https://') || commentAttachments.length >= 5} onClick={() => { setCommentAttachments(prev => [...prev, attachmentUrl.trim()]); setAttachmentUrl(''); }}>Add link</button>
-                </div>
-                {commentAttachments.map((url, index) => <div key={url} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', marginTop: '0.35rem' }}><span>Attachment {index + 1}: {url}</span><button type="button" className="btn btn-secondary btn-sm" onClick={() => setCommentAttachments(prev => prev.filter((_, i) => i !== index))}>Remove</button></div>)}
+                <label className="form-label">Attach files or images (up to 5 files, 5 MB each)</label>
+                <input type="file" className="form-control" accept="image/jpeg,image/png,image/webp,image/gif,application/pdf,text/plain" disabled={uploadingAttachment || commentAttachments.length >= 5} onChange={handleAttachmentUpload} />
+                <small style={{ color: 'var(--text-muted)' }}>Supported: JPG, PNG, WEBP, GIF, PDF and TXT.</small>
+                {uploadingAttachment && <p role="status" style={{ fontSize: '0.8125rem' }}>Uploading attachment...</p>}
+                {commentAttachments.map((url, index) => <div key={url} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', marginTop: '0.35rem' }}><span>Attachment {index + 1} uploaded</span><button type="button" className="btn btn-secondary btn-sm" onClick={() => setCommentAttachments(prev => prev.filter((_, i) => i !== index))}>Remove</button></div>)}
               </div>
 
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -367,7 +409,7 @@ export default function TicketDetailPage() {
                 <button
                   type="submit"
                   className="btn btn-primary btn-sm"
-                  disabled={submittingComment}
+                  disabled={submittingComment || uploadingAttachment}
                 >
                   <Send size={14} /> {submittingComment ? 'Posting...' : isInternalNote ? 'Post Internal Note' : 'Send Reply'}
                 </button>
