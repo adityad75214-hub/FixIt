@@ -29,7 +29,6 @@ def test_registration_requires_approved_college_domain(client, monkeypatch):
         "institution_slug": slug,
         "name": "Wrong Domain",
         "email": "someone@gmail.com",
-        "password": "SecurePassphrase123!",
         "role": "student",
         "department": "Computer Science",
         "identifier": "USN-001",
@@ -67,7 +66,7 @@ def test_student_can_register_after_college_email_otp(client, monkeypatch):
     assert db_manager.db.sync_db.users.find_one({"email": email}) is None
     code = re.search(r"verification code .* is: (\d{6})", sent["body"], re.IGNORECASE).group(1)
 
-    verified = client.post("/api/auth/registration/verify-code", json={"email": email, "code": code})
+    verified = client.post("/api/auth/registration/verify-code", json={"email": email, "code": code, "password": "SecurePassphrase123!"})
     assert verified.status_code == 201, verified.text
     assert verified.json()["user"]["role"] == "student"
     assert verified.json()["user"]["institution_id"].startswith("INST-OTP-")
@@ -127,6 +126,6 @@ def test_incorrect_registration_code_does_not_create_user(client, monkeypatch):
         "identifier": "USN-OTP-002",
     })
     assert requested.status_code == 202, requested.text
-    verified = client.post("/api/auth/registration/verify-code", json={"email": email, "code": "000000"})
+    verified = client.post("/api/auth/registration/verify-code", json={"email": email, "code": "000000", "password": "SecurePassphrase123!"})
     assert verified.status_code == 400
     assert db_manager.db.sync_db.users.find_one({"email": email}) is None
