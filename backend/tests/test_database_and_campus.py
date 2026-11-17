@@ -139,6 +139,23 @@ def test_admin_can_add_custom_locations_and_students_can_view_them(client, admin
     assert visible.status_code == 200
     assert any(item["name"] == "Hostel Common Room" for item in visible.json())
 
+    outdoor = client.post("/api/campus/locations", headers=admin_headers, json={
+        "campus_id": campus_id, "name": "Main Gate", "code": f"MG{suffix}",
+        "category": "gate", "description": "Main campus entrance"
+    })
+    assert outdoor.status_code == 201, outdoor.text
+    ticket = client.post("/api/tickets?auto_assign=false", headers=student_headers, json={
+        "title": "Main gate lighting is not working",
+        "description": "The lights near the main gate are not working after sunset.",
+        "problem_domain": "facilities",
+        "category": "Campus Facilities and Maintenance",
+        "campus_id": campus_id,
+        "building": "Campus-wide / Outdoor",
+        "floor": "Outdoor",
+        "room": "Main Gate"
+    })
+    assert ticket.status_code == 201, ticket.text
+
 
 def test_campus_and_ticket_data_are_isolated_between_institutions(client, admin_token):
     import uuid
