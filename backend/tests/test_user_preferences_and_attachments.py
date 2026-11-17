@@ -23,6 +23,11 @@ def test_user_preferences_accept_hindi_and_notification_opt_out():
     assert preferences.in_app_notifications is False
 
 
+def test_user_preferences_accept_indian_regional_languages():
+    for language in ("kn", "ta", "te", "ml", "mr", "bn"):
+        assert UserPreferences(language=language).language == language
+
+
 def test_user_preferences_reject_unsupported_language():
     with pytest.raises(ValidationError):
         UserPreferences(language="fr")
