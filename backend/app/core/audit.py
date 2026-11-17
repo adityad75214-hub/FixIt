@@ -30,6 +30,7 @@ async def record_audit_log(
             "action": action,
             "resource_type": resource_type,
             "resource_id": resource_id,
+            "institution_id": (actor or {}).get("institution_id") or "INST-DEFAULT",
             "actor": actor_info,
             "details": details or {},
             "timestamp": datetime.now(timezone.utc).isoformat()
