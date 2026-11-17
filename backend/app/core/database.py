@@ -149,6 +149,17 @@ async def close_mongo_connection():
 
 async def init_indexes(db):
     try:
+        # Institution identity and tenant-scoped uniqueness
+        await db.institutions.create_index("slug", unique=True)
+        await db.users.create_index("institution_id")
+        await db.tickets.create_index([("institution_id", 1), ("created_at", -1)])
+        await db.campuses.create_index([("institution_id", 1), ("code", 1)], unique=True)
+        await db.buildings.create_index([("institution_id", 1), ("campus_id", 1)])
+        await db.floors.create_index([("institution_id", 1), ("building_id", 1)])
+        await db.rooms.create_index([("institution_id", 1), ("floor_id", 1)])
+        await db.blocks.create_index([("institution_id", 1), ("building_id", 1)])
+        await db.campus_locations.create_index([("institution_id", 1), ("campus_id", 1)])
+
         # Core collection indexes
         await db.users.create_index("email", unique=True)
         await db.users.create_index("role")
