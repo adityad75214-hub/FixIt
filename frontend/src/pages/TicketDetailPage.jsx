@@ -786,7 +786,7 @@ export default function TicketDetailPage() {
           <textarea
             className="form-control"
             rows={3}
-            placeholder="Share what went well or how our IT team can improve..."
+            placeholder="Share what went well or how our support team can improve..."
             value={feedbackComments}
             onChange={(e) => setFeedbackComments(e.target.value)}
           />
