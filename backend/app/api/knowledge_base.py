@@ -65,7 +65,8 @@ async def get_suggested_articles(
     db = get_database()
     docs = await db.knowledge_base.find({
         "category": category,
-        "is_published": True
+        "is_published": True,
+        "institution_id": institution_id_for(current_user)
     }).sort("helpful_count", -1).limit(4).to_list(4)
 
     return [
@@ -126,13 +127,13 @@ async def vote_article(
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
     try:
-        await db.knowledge_base_votes.insert_one(vote_doc)
+        await db.knowledge_base_votes.insert_one({**vote_doc, "institution_id": institution_id_for(current_user)})
     except DuplicateKeyError:
         raise HTTPException(status_code=409, detail="You have already voted on this article.") from None
 
     field = "helpful_count" if is_helpful else "not_helpful_count"
     await db.knowledge_base.update_one({"_id": article_id}, {"$inc": {field: 1}})
-    updated = await db.knowledge_base.find_one({"_id": article_id})
+    updated = await db.knowledge_base.find_one(scoped_filter(current_user, {"_id": article_id}))
     return {
         "message": "Thank you for your feedback!",
         "helpful_count": updated.get("helpful_count", 0),
@@ -182,7 +183,7 @@ async def update_article(
     current_user: dict = Depends(require_roles("admin", "staff"))
 ):
     db = get_database()
-    article = await db.knowledge_base.find_one({"_id": article_id})
+    article = await db.knowledge_base.find_one(scoped_filter(current_user, {"_id": article_id}))
     if not article:
         raise HTTPException(status_code=404, detail="Article not found")
 
@@ -224,7 +225,7 @@ async def delete_article(
     article = await db.knowledge_base.find_one({"_id": article_id})
     if not article:
         raise HTTPException(status_code=404, detail="Article not found")
-    await db.knowledge_base.delete_one({"_id": article_id})
+    await db.knowledge_base.delete_one(scoped_filter(current_user, {"_id": article_id}))
     await db.knowledge_base_votes.delete_many({"article_id": article_id, "institution_id": institution_id_for(current_user)})
     await record_audit_log(
         action="KB_ARTICLE_DELETED",
