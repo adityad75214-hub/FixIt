@@ -27,6 +27,10 @@ async def list_institutions_for_platform(current_user: dict = Depends(require_ro
 @router.post("", response_model=InstitutionResponse, status_code=status.HTTP_201_CREATED)
 async def create_institution(payload: InstitutionCreate, current_user: dict = Depends(require_roles("platform_admin"))):
     db = get_database()
+    if payload.email_domains:
+        conflicting = await db.institutions.find_one({"email_domains": {"$in": payload.email_domains}})
+        if conflicting:
+            raise HTTPException(status_code=409, detail="One or more email domains are already assigned to an institution.")
     institution_id = f"INST-{uuid.uuid4().hex[:10].upper()}"
     doc = {"_id": institution_id, **payload.model_dump(), "status": "active", "created_at": datetime.now(timezone.utc).isoformat(), "created_by": current_user["id"]}
     try:
