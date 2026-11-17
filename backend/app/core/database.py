@@ -196,8 +196,16 @@ async def init_indexes(db):
 
         # Supporting entity indexes
         await db.departments.create_index("code", unique=True)
-        await db.categories.create_index("name", unique=True)
-        await db.sla_policies.create_index("priority", unique=True)
+        try:
+            await db.categories.drop_index("name_1")
+        except Exception:
+            pass
+        await db.categories.create_index([("institution_id", 1), ("name", 1)], unique=True)
+        try:
+            await db.sla_policies.drop_index("priority_1")
+        except Exception:
+            pass
+        await db.sla_policies.create_index([("institution_id", 1), ("priority", 1)], unique=True)
         await db.feedback.create_index("ticket_id", unique=True)
         await db.knowledge_base.create_index("category")
         await db.knowledge_base_votes.create_index([("article_id", 1), ("user_id", 1)], unique=True)
