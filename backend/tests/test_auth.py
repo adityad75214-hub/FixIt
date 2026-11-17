@@ -196,3 +196,38 @@ def test_logout_revokes_access_and_refresh_tokens(client):
         cookies={"fixit_refresh_token": refresh_token},
     )
     assert refresh_check.status_code == 401
+
+
+
+def test_public_student_registration_checks_selected_college_email_domain(client):
+    import uuid
+    from app.core.database import db_manager
+
+    institution_id = f"INST-REG-{uuid.uuid4().hex[:8].upper()}"
+    db_manager.db.sync_db.institutions.insert_one({
+        "_id": institution_id,
+        "name": "Registration College",
+        "slug": f"registration-{uuid.uuid4().hex[:6]}",
+        "email_domains": ["students.registration.edu"],
+        "status": "active",
+    })
+    slug = db_manager.db.sync_db.institutions.find_one({"_id": institution_id})["slug"]
+
+    rejected = client.post("/api/auth/register", json={
+        "email": f"wrong-{uuid.uuid4().hex[:6]}@personalmail.com",
+        "password": "SecureStudentPass123!",
+        "name": "Wrong Domain Student",
+        "role": "student",
+        "institution_slug": slug,
+    })
+    assert rejected.status_code == 403
+
+    accepted = client.post("/api/auth/register", json={
+        "email": f"student-{uuid.uuid4().hex[:6]}@students.registration.edu",
+        "password": "SecureStudentPass123!",
+        "name": "College Student",
+        "role": "student",
+        "institution_slug": slug,
+    })
+    assert accepted.status_code == 201, accepted.text
+    assert accepted.json()["user"]["institution_id"] == institution_id
