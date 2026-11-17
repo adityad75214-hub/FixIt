@@ -7,7 +7,6 @@ import { institutionService, authService } from '../api/services';
 const initialForm = {
   name: '',
   email: '',
-  password: '',
   role: 'student',
   department: '',
   phone: '',
@@ -62,7 +61,7 @@ export default function RegisterPage() {
     setError('');
     setLoading(true);
     try {
-      await completeRegistration(formData.email, code);
+      await completeRegistration(formData.email, code, formData.password);
       navigate('/dashboard');
     } catch (err) {
       setError(err.response?.data?.detail || 'Email verification failed. Check the code and try again.');
@@ -141,14 +140,8 @@ export default function RegisterPage() {
                 </div>
               </div>
 
-              <div className="form-group">
-                <label className="form-label" htmlFor="password">Create password</label>
-                <input id="password" type="password" name="password" className="form-control" autoComplete="new-password" value={formData.password} onChange={handleChange} minLength={12} required />
-                <small style={{ color: 'var(--text-muted)' }}>Use at least 12 characters.</small>
-              </div>
-
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-muted)', fontSize: '0.8rem', margin: '1rem 0' }}>
-                <ShieldCheck size={17} /> Your account is created only after your college email is verified.
+                <ShieldCheck size={17} /> First verify your college email. You will create your own password in the next step.
               </div>
               <button type="submit" className="btn btn-navy" style={{ width: '100%', padding: '0.75rem' }} disabled={loading || institutions.length === 0}>
                 {loading ? 'Sending verification code…' : 'Send verification code'} <ArrowRight size={16} />
@@ -159,6 +152,11 @@ export default function RegisterPage() {
               <div className="form-group">
                 <label className="form-label" htmlFor="verification-code">Six-digit verification code</label>
                 <input id="verification-code" className="form-control" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6} value={code} onChange={(event) => setCode(event.target.value.replace(/\D/g, '').slice(0, 6))} placeholder="000000" required />
+              </div>
+              <div className="form-group">
+                <label className="form-label" htmlFor="password">Create your password</label>
+                <input id="password" type="password" name="password" className="form-control" autoComplete="new-password" value={formData.password} onChange={handleChange} minLength={12} required />
+                <small style={{ color: 'var(--text-muted)' }}>At least 12 characters. This password belongs only to your account.</small>
               </div>
               <button type="submit" className="btn btn-navy" style={{ width: '100%', padding: '0.75rem' }} disabled={loading || code.length !== 6}>
                 {loading ? 'Verifying…' : 'Verify email and create account'} <ShieldCheck size={16} />
