@@ -23,7 +23,7 @@ export default function PlatformAdminDashboard() {
       const response = await institutionService.manageList();
       const rows = response.data || [];
       setInstitutions(rows);
-      setSelectedInstitution((current) => current && rows.some((item) => item.id === current) ? current : (rows[0]?.id || ''));
+      setSelectedInstitution((current) => current && rows.some((item) => item.id === current && item.status === 'active') ? current : (rows.find((item) => item.status === 'active')?.id || ''));
       setError('');
     } catch (err) {
       setError(err.response?.data?.detail || 'Could not load institution workspaces.');
