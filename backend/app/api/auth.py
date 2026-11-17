@@ -160,7 +160,7 @@ async def register(user_in: UserCreate, response: Response, request: Request):
             raise HTTPException(status_code=400, detail="That college workspace was not found or is not active.")
         domain = user_in.email.lower().rsplit("@", 1)[-1]
         approved_domains = institution.get("email_domains", [])
-        if institution_id != "INST-DEFAULT":
+        if str(institution["_id"]) != "INST-DEFAULT":
             if not approved_domains:
                 raise HTTPException(status_code=403, detail="This college workspace requires an administrator-issued account invitation.")
             if domain not in approved_domains:
@@ -494,7 +494,7 @@ async def change_password(
 @router.get("/preferences")
 async def get_my_preferences(current_user: dict = Depends(get_current_user)):
     db = get_database()
-    doc = await db.user_preferences.find_one({"user_id": current_user["id"]}) or {}
+    doc = await db.user_preferences.find_one({"user_id": current_user["id"], "institution_id": current_user.get("institution_id") or "INST-DEFAULT"}) or {}
     return {
         "email_notifications": doc.get("email_notifications", True),
         "in_app_notifications": doc.get("in_app_notifications", True),
@@ -510,8 +510,8 @@ async def update_my_preferences(
     db = get_database()
     values = preferences.model_dump()
     await db.user_preferences.update_one(
-        {"user_id": current_user["id"]},
-        {"$set": {**values, "updated_at": datetime.now(timezone.utc).isoformat()}},
+        {"user_id": current_user["id"], "institution_id": current_user.get("institution_id") or "INST-DEFAULT"},
+        {"$set": {**values, "institution_id": current_user.get("institution_id") or "INST-DEFAULT", "updated_at": datetime.now(timezone.utc).isoformat()}},
         upsert=True,
     )
     return values
