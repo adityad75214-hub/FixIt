@@ -7,6 +7,7 @@ import { institutionService, authService } from '../api/services';
 const initialForm = {
   name: '',
   email: '',
+  password: '',
   role: 'student',
   department: '',
   phone: '',
@@ -46,7 +47,8 @@ export default function RegisterPage() {
     setMessage('');
     setLoading(true);
     try {
-      const { data } = await authService.requestRegistrationCode(formData);
+      const { password, ...registrationDetails } = formData;
+      const { data } = await authService.requestRegistrationCode(registrationDetails);
       setStep('verify');
       setMessage(data.message || 'A verification code has been sent to your college email.');
     } catch (err) {
