@@ -40,7 +40,8 @@ async def submit_feedback(
     now_iso = datetime.now(timezone.utc).isoformat()
 
     doc = {
-        "_id": feedback_id,\n        "institution_id": institution_id_for(current_user),
+        "_id": feedback_id,
+        "institution_id": institution_id_for(current_user),
         "ticket_id": ticket["ticket_id"],
         "ticket_custom_id": ticket["ticket_id"],
         "ticket_db_id": str(ticket["_id"]),
@@ -84,6 +85,7 @@ async def get_feedback_metrics(current_user: dict = Depends(require_roles("admin
     db = get_database()
     # Aggregate every review rather than silently truncating at the previous 1,000-row cap.
     summary = await db.feedback.aggregate([
+        {"$match": {"institution_id": institution_id_for(current_user)}},
         {"$group": {
             "_id": None,
             "total_reviews": {"$sum": 1},
@@ -93,6 +95,7 @@ async def get_feedback_metrics(current_user: dict = Depends(require_roles("admin
 
     distribution = {1: 0, 2: 0, 3: 0, 4: 0, 5: 0}
     rating_counts = await db.feedback.aggregate([
+        {"$match": {"institution_id": institution_id_for(current_user)}},
         {"$group": {"_id": "$rating", "count": {"$sum": 1}}}
     ]).to_list(5)
     for row in rating_counts:
