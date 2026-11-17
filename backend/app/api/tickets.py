@@ -471,9 +471,9 @@ async def update_ticket_priority(
     current_user: dict = Depends(require_roles("admin"))
 ):
     db = get_database()
-    ticket = await db.tickets.find_one({
+    ticket = await db.tickets.find_one(scoped_filter(current_user, {
         "$or": [{"_id": ticket_id}, {"ticket_id": ticket_id}]
-    })
+    }))
     if not ticket:
         raise HTTPException(status_code=404, detail="Ticket not found")
 
@@ -496,7 +496,7 @@ async def update_ticket_priority(
     }
 
     update_result = await db.tickets.update_one(
-        {"_id": ticket["_id"], "priority": old_priority, "updated_at": ticket.get("updated_at")},
+        {"_id": ticket["_id"], "institution_id": institution_id_for(current_user), "priority": old_priority, "updated_at": ticket.get("updated_at")},
         {
             "$set": {
                 "priority": new_priority,
@@ -547,7 +547,7 @@ async def link_ticket_to_incident(
 
     now_iso = datetime.now(timezone.utc).isoformat()
     update_result = await db.tickets.update_one(
-        {"_id": ticket["_id"], "updated_at": ticket.get("updated_at"), "$or": [
+        {"_id": ticket["_id"], "institution_id": institution_id_for(current_user), "updated_at": ticket.get("updated_at"), "$or": [
             {"linked_incident_id": None}, {"linked_incident_id": {"$exists": False}}
         ]},
         {
