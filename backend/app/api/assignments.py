@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from app.core.database import get_database
 from app.core.security import get_current_user, require_roles
 from app.core.audit import record_audit_log
+from app.core.tenancy import institution_id_for, scoped_filter
 from app.models.ticket import TicketAssign, TicketStatus
 from app.services.assignment_service import get_staff_workload, find_best_staff_for_ticket
 from app.services.notification_service import send_notification
@@ -12,7 +13,7 @@ router = APIRouter(prefix="/assignments", tags=["Staff Assignment"])
 
 @router.get("/workload", response_model=List[Dict[str, Any]])
 async def get_workload_metrics(current_user: dict = Depends(require_roles("admin", "staff"))):
-    workload = await get_staff_workload()
+    workload = await get_staff_workload(institution_id_for(current_user))
     if current_user["role"] == "staff":
         return [item for item in workload if item.get("staff_id") == current_user["id"]]
     return workload
@@ -24,13 +25,13 @@ async def assign_ticket(
     current_user: dict = Depends(require_roles("admin"))
 ):
     db = get_database()
-    ticket = await db.tickets.find_one({"$or": [{"_id": ticket_id}, {"ticket_id": ticket_id}]})
+    ticket = await db.tickets.find_one(scoped_filter(current_user, {"$or": [{"_id": ticket_id}, {"ticket_id": ticket_id}]}))
     if not ticket:
         raise HTTPException(status_code=404, detail="Ticket not found")
     if ticket.get("status") in {TicketStatus.RESOLVED.value, TicketStatus.CLOSED.value}:
         raise HTTPException(status_code=409, detail="Resolved or closed tickets cannot be assigned. Reopen the ticket first.")
 
-    staff_user = await db.users.find_one({"_id": assignment.staff_id, "role": "staff", "is_active": True})
+    staff_user = await db.users.find_one({"_id": assignment.staff_id, "role": "staff", "is_active": True, "institution_id": institution_id_for(current_user)})
     if not staff_user:
         raise HTTPException(status_code=404, detail="IT Staff member not found or inactive")
 
@@ -60,7 +61,7 @@ async def assign_ticket(
     new_status = TicketStatus.ASSIGNED.value if ticket.get("status") == TicketStatus.OPEN.value else ticket.get("status")
 
     update_result = await db.tickets.update_one(
-        {"_id": ticket["_id"], "updated_at": ticket.get("updated_at")},
+        {"_id": ticket["_id"], "institution_id": institution_id_for(current_user), "updated_at": ticket.get("updated_at")},
         {
             "$set": {
                 "assigned_to": assigned_staff_data,
@@ -105,7 +106,7 @@ async def trigger_auto_assign(
     if not ticket:
         raise HTTPException(status_code=404, detail="Ticket not found")
 
-    staff = await find_best_staff_for_ticket(ticket.get("category", ""))
+    staff = await find_best_staff_for_ticket(ticket.get("category", ""), institution_id_for(current_user))
     if not staff:
         raise HTTPException(status_code=400, detail="No available IT staff members found for automatic assignment")
 
