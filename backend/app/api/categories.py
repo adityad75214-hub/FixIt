@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from app.core.database import get_database
 from app.core.security import require_roles, get_current_user
 from app.core.audit import record_audit_log
+from app.core.tenancy import institution_id_for, scoped_filter
 from app.models.category import CategoryResponse, CategoryCreate, CampusLocationResponse, CampusLocationBase
 
 router = APIRouter(prefix="/categories", tags=["Categories & Locations"])
@@ -13,7 +14,9 @@ router = APIRouter(prefix="/categories", tags=["Categories & Locations"])
 @router.get("", response_model=List[CategoryResponse])
 async def list_categories(include_inactive: bool = False, current_user: dict = Depends(get_current_user)):
     db = get_database()
-    query = {} if include_inactive else {"is_active": True}
+    query = {"institution_id": institution_id_for(current_user)}
+    if not include_inactive:
+        query["is_active"] = True
     docs = await db.categories.find(query).to_list(None)
     return [
         CategoryResponse(
@@ -33,7 +36,7 @@ async def create_category(
     current_user: dict = Depends(require_roles("admin"))
 ):
     db = get_database()
-    existing = await db.categories.find_one({"name": {"$regex": f"^{re.escape(cat_in.name.strip())}$", "$options": "i"}})
+    existing = await db.categories.find_one({"institution_id": institution_id_for(current_user), "name": {"$regex": f"^{re.escape(cat_in.name.strip())}$", "$options": "i"}})
     if existing:
         raise HTTPException(status_code=400, detail="Category with this name already exists")
 
@@ -44,7 +47,8 @@ async def create_category(
         "description": cat_in.description,
         "subcategories": cat_in.subcategories,
         "is_active": cat_in.is_active,
-        "icon": cat_in.icon or "Wrench"
+        "icon": cat_in.icon or "Wrench",
+        "institution_id": institution_id_for(current_user)
     }
     await db.categories.insert_one(doc)
 
@@ -65,19 +69,20 @@ async def update_category(
     current_user: dict = Depends(require_roles("admin"))
 ):
     db = get_database()
-    existing = await db.categories.find_one({"_id": cat_id})
+    existing = await db.categories.find_one(scoped_filter(current_user, {"_id": cat_id}))
     if not existing:
         raise HTTPException(status_code=404, detail="Category not found")
     duplicate = await db.categories.find_one({
         "name": {"$regex": f"^{re.escape(cat_in.name.strip())}$", "$options": "i"},
         "_id": {"$ne": cat_id},
+        "institution_id": institution_id_for(current_user),
     })
     if duplicate:
         raise HTTPException(status_code=409, detail="Another category already uses this name.")
 
     try:
         await db.categories.update_one(
-            {"_id": cat_id},
+            {"_id": cat_id, "institution_id": institution_id_for(current_user)},
             {"$set": cat_in.model_dump()}
         )
     except DuplicateKeyError:
@@ -96,7 +101,7 @@ async def update_category(
 @router.get("/locations", response_model=List[CampusLocationResponse])
 async def list_campus_locations(current_user: dict = Depends(get_current_user)):
     db = get_database()
-    docs = await db.campus_locations.find({"is_active": True}).to_list(None)
+    docs = await db.campus_locations.find(scoped_filter(current_user, {"is_active": True})).to_list(None)
     return [
         CampusLocationResponse(
             id=str(d["_id"]),
@@ -120,7 +125,8 @@ async def create_campus_location(
         "building": loc_in.building,
         "floors": loc_in.floors,
         "rooms": loc_in.rooms,
-        "is_active": loc_in.is_active
+        "is_active": loc_in.is_active,
+        "institution_id": institution_id_for(current_user)
     }
     await db.campus_locations.insert_one(doc)
     return CampusLocationResponse(id=loc_id, **loc_in.model_dump())
