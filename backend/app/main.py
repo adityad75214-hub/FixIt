@@ -52,6 +52,26 @@ async def lifespan(app: FastAPI):
         from app.seed import seed_data
         await seed_data()
 
+    # Give legacy institutions a deterministic Primary College Admin if none exists.
+    # This is a one-time, idempotent migration; an existing primary is never overwritten.
+    institutions = await db.institutions.find({"status": "active"}).to_list(None)
+    for institution in institutions:
+        institution_id = str(institution["_id"])
+        existing_primary = await db.users.find_one({
+            "institution_id": institution_id, "role": "admin",
+            "admin_level": "primary", "is_active": True
+        })
+        if not existing_primary:
+            first_admin = await db.users.find({
+                "institution_id": institution_id, "role": "admin",
+                "$or": [{"is_active": True}, {"is_active": {"$exists": False}}]
+            }).sort("created_at", 1).to_list(1)
+            if first_admin:
+                await db.users.update_one(
+                    {"_id": first_admin[0]["_id"], "institution_id": institution_id, "role": "admin"},
+                    {"$set": {"admin_level": "primary"}}
+                )
+
     # Seed routines can create reference documents; attach any newly created legacy records too.
     for collection_name in ("users", "tickets", "campuses", "buildings", "floors", "rooms", "blocks", "campus_locations", "incidents", "knowledge_base", "categories", "departments", "sla_policies", "comments", "feedback", "audit_logs", "feature_requests", "uploads", "notifications", "user_preferences", "knowledge_base_votes"):
         await db[collection_name].update_many({"institution_id": {"$exists": False}}, {"$set": {"institution_id": "INST-DEFAULT"}})
