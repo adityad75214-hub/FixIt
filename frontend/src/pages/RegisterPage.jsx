@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Wrench, ArrowRight, ShieldCheck, ArrowLeft } from 'lucide-react';
+import { Wrench, ArrowRight, ShieldCheck, ArrowLeft, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { institutionService, authService } from '../api/services';
 
@@ -22,6 +22,7 @@ export default function RegisterPage() {
   const [institutions, setInstitutions] = useState([]);
   const [step, setStep] = useState('details');
   const [code, setCode] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -157,8 +158,8 @@ export default function RegisterPage() {
               </div>
               <div className="form-group">
                 <label className="form-label" htmlFor="password">Create your password</label>
-                <input id="password" type="password" name="password" className="form-control" autoComplete="new-password" value={formData.password} onChange={handleChange} minLength={12} required />
-                <small style={{ color: 'var(--text-muted)' }}>At least 12 characters. This password belongs only to your account.</small>
+                <input id="password" type={showPassword ? "text" : "password"} name="password" className="form-control" autoComplete="new-password" value={formData.password} onChange={handleChange} minLength={12} required />
+                <button type="button" aria-label={showPassword ? "Hide password" : "Show password"} onClick={() => setShowPassword((value) => !value)} style={{ border: 0, background: "transparent", color: "var(--brand-blue)", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "0.35rem", padding: "0.35rem 0" }}>{showPassword ? <EyeOff size={16} /> : <Eye size={16} />}{showPassword ? "Hide password" : "Show password"}</button><small style={{ display: "block", color: "var(--text-muted)" }}>At least 12 characters. This password belongs only to your account.</small>
               </div>
               <button type="submit" className="btn btn-navy" style={{ width: '100%', padding: '0.75rem' }} disabled={loading || code.length !== 6}>
                 {loading ? 'Verifying…' : 'Verify email and create account'} <ShieldCheck size={16} />
