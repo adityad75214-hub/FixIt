@@ -30,6 +30,7 @@ const CampusManagementPage = lazy(() => import('./pages/CampusManagementPage'));
 const CategoryManagementPage = lazy(() => import('./pages/CategoryManagementPage'));
 const IncidentManagementPage = lazy(() => import('./pages/IncidentManagementPage'));
 const PlatformAdminDashboard = lazy(() => import('./pages/PlatformAdminDashboard'));
+const AcceptInvitationPage = lazy(() => import('./pages/AcceptInvitationPage'));
 
 const PUBLIC_REGISTRATION_ENABLED = import.meta.env.DEV && import.meta.env.VITE_PUBLIC_REGISTRATION_ENABLED !== 'false';
 
@@ -75,6 +76,7 @@ export default function App() {
             {/* Public Routes */}
             <Route path="/" element={<LandingPage />} />
             <Route path="/login" element={<LoginPage />} />
+            <Route path="/accept-invitation" element={<AcceptInvitationPage />} />
             <Route path="/register" element={PUBLIC_REGISTRATION_ENABLED ? <RegisterPage /> : <Navigate to="/login" replace />} />
 
             {/* Authenticated Application Routes */}
