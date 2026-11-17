@@ -31,6 +31,7 @@ The domain is a routing classification, not a promise that FixIt itself can prov
 Configure these environment variables on the backend to enable email notifications. If SMTP is not configured, in-app notifications continue to work and email is skipped.
 
 ```env
+APP_BASE_URL=https://your-fixit-domain.example
 SMTP_HOST=
 SMTP_PORT=587
 SMTP_USERNAME=
