@@ -13,6 +13,7 @@ export default function CampusManagementPage() {
   const [campuses, setCampuses] = useState([]);
   const [buildings, setBuildings] = useState([]);
   const [hierarchy, setHierarchy] = useState([]);
+  const [customLocations, setCustomLocations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -37,6 +38,7 @@ export default function CampusManagementPage() {
       setCampuses(campusRows);
       setBuildings(buildingRows);
       setHierarchy(hierarchyRes.data?.buildings || []);
+      setCustomLocations(hierarchyRes.data?.locations || []);
       setBuildingForm(prev => ({ ...prev, campus_id: prev.campus_id || campusRows[0]?.id || '' }));
       setFloorForm(prev => ({ ...prev, building_id: prev.building_id || buildingRows[0]?.id || '' }));
       setRoomForm(prev => ({ ...prev, building_id: prev.building_id || buildingRows[0]?.id || '' }));
@@ -175,6 +177,7 @@ export default function CampusManagementPage() {
                 <div className="campus-tree-title"><Building2 size={16} /><strong>{building.name}</strong><span>{building.code}</span></div>
                 {(building.blocks || []).map(block => <div className="campus-tree-floor" key={block.id}><div><Layers3 size={14} /> {block.name} <small>{block.code}</small></div></div>)}
                 {(building.floors || []).map(floor => <div className="campus-tree-floor" key={floor.id}><div><Layers3 size={14} /> {floor.floor_name}</div><ul>{(floor.rooms || []).map(room => <li key={room.id}><span>{room.room_number}</span>{room.room_name && ` · ${room.room_name}`}{room.department && <small> — {room.department}</small>}</li>)}</ul></div>)}
+                {customLocations.filter(location => location.building_id === building.id).map(location => <div className="campus-tree-floor" key={location.id}><div><DoorOpen size={14} /> {location.name} <small>({location.category.replaceAll('_', ' ')})</small></div></div>)}
               </div>)}
             </div>
           )}
