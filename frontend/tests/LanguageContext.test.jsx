@@ -9,6 +9,8 @@ function LanguageHarness() {
     <div>
       <span data-testid="language">{language}</span>
       <span data-testid="dashboard">{t('Dashboard')}</span>
+      <span data-testid="notifications">{t('Notifications')}</span>
+      {LANGUAGE_OPTIONS.map(({ value }) => <button key={value} type="button" onClick={() => setLanguage(value)}>{value}</button> )}
       <button type="button" onClick={() => setLanguage('kn')}>Kannada</button>
       <button type="button" onClick={() => setLanguage('unsupported')}>Unsupported</button>
     </div>
@@ -45,11 +47,21 @@ describe('Language preferences', () => {
   });
 
   it('translates shared support and notification labels in every regional language', () => {
-    const { rerender } = render(<LanguageProvider><LanguageHarness /></LanguageProvider>);
-    const expected = { hi: 'सूचनाएँ', kn: 'ಅಧಿಸೂಚನೆಗಳು', ta: 'அறிவிப்புகள்', te: 'నోటిఫికేషన్‌లు', ml: 'അറിയിപ്പുകൾ', mr: 'सूचना', bn: 'বিজ্ঞপ্তি' };
+    render(<LanguageProvider><LanguageHarness /></LanguageProvider>);
+    const expected = {
+      en: 'Notifications',
+      hi: 'सूचनाएँ',
+      kn: 'ಅಧಿಸೂಚನೆಗಳು',
+      ta: 'அறிவிப்புகள்',
+      te: 'నోటిఫికేషన్‌లు',
+      ml: 'അറിയിപ്പുകൾ',
+      mr: 'सूचना',
+      bn: 'বিজ্ঞপ্তి'
+    };
     for (const [code, label] of Object.entries(expected)) {
-      localStorage.setItem('fixit_language', code);
-      rerender(<LanguageProvider><LanguageHarness /></LanguageProvider>);
+      fireEvent.click(screen.getByRole('button', { name: code }));
+      expect(screen.getByTestId('language').textContent).toBe(code);
+      expect(screen.getByTestId('notifications').textContent).toBe(label);
     }
   });
 
