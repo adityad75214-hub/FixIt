@@ -75,6 +75,8 @@ export const knowledgeBaseService = {
   getArticle: (id) => api.get(`/knowledge-base/${id}`),
   voteHelpful: (id, helpful) => api.post(`/knowledge-base/${id}/vote`, { helpful }),
   createArticle: (data) => api.post('/knowledge-base', data),
+  updateArticle: (id, data) => api.put(`/knowledge-base/${id}`, data),
+  deleteArticle: (id) => api.delete(`/knowledge-base/${id}`),
 };
 
 export const feedbackService = {
