@@ -10,7 +10,7 @@ const translations = {
     'My Assignments': 'मेरे असाइनमेंट', Administration: 'प्रशासन', 'User Directory': 'उपयोगकर्ता सूची',
     'SLA Policies': 'SLA नीतियाँ', 'Analytics & Reports': 'विश्लेषण और रिपोर्ट',
     'Audit Logs': 'ऑडिट लॉग', 'Campus Setup': 'कैंपस सेटअप', 'Issue Categories': 'समस्या श्रेणियाँ',
-    'Student': 'विद्यार्थी', Faculty: 'शिक्षक', 'IT Staff': 'सहायता कर्मचारी', Administrator: 'प्रशासक',
+    'Student': 'विद्यार्थी', Faculty: 'शिक्षक', 'IT Staff': 'सहायता कर्मचारी', 'Support Staff': 'सहायता कर्मचारी', 'CAMPUS SUPPORT PLATFORM': 'कैंपस सहायता मंच', 'Campus Support Platform': 'कैंपस सहायता मंच', Administrator: 'प्रशासक',
     'CAMPUS IT HELPDESK': 'कैंपस सहायता केंद्र', 'Campus Community': 'कैंपस समुदाय',
     'Profile settings': 'प्रोफ़ाइल सेटिंग', 'Log Out': 'लॉग आउट', 'Toggle navigation menu': 'नेविगेशन मेनू खोलें',
     'My Profile & Security Settings': 'मेरी प्रोफ़ाइल और सुरक्षा सेटिंग',
