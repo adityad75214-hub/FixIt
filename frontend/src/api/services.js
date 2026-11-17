@@ -13,7 +13,7 @@ export const authService = {
   uploadFile: (file, purpose, ticketId) => {
     const form = new FormData();
     form.append('file', file);
-    return api.post('/uploads', form, { params: { purpose, ...(ticketId ? { ticket_id: ticketId } : {}) }, headers: { 'Content-Type': 'multipart/form-data' } });
+    return api.post('/uploads', form, { params: { purpose, ...(ticketId ? { ticket_id: ticketId } : {}) }, headers: { 'Content-Type': undefined } });
   },
   downloadUpload: (uploadId) => api.get(`/uploads/${uploadId}`, { responseType: 'blob' }),
 };
