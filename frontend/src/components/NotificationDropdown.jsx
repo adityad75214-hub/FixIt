@@ -125,7 +125,7 @@ export default function NotificationDropdown() {
                   gap: '0.25rem'
                 }}
               >
-                <Check size={14} /> Mark all read
+                <Check size={14} /> {t('Mark all read')}
               </button>
             )}
           </div>
