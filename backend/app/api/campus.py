@@ -203,7 +203,7 @@ async def list_rooms(
     current_user: dict = Depends(get_current_user)
 ):
     db = get_database()
-    query = {"is_active": True}
+    query = {"is_active": True, "institution_id": institution_id_for(current_user)}
     if floor_id:
         query["floor_id"] = floor_id
     if building_id:
@@ -246,7 +246,7 @@ async def create_room(
 @router.get("/blocks", response_model=List[BlockResponse])
 async def list_blocks(building_id: Optional[str] = None, current_user: dict = Depends(get_current_user)):
     db = get_database()
-    query = {"is_active": True}
+    query = {"is_active": True, "institution_id": institution_id_for(current_user)}
     if building_id:
         query["building_id"] = building_id
     docs = await db.blocks.find(query).sort("order", 1).to_list(None)
