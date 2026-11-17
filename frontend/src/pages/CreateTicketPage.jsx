@@ -275,6 +275,53 @@ const CATEGORIES_DATA = {
     "Equipment Maintenance",
     "IT Infrastructure Setup",
     "IT Asset Management"
+  ],
+  "Academic Support": [
+    "Subject Guidance",
+    "Course / Syllabus Query",
+    "Assignment Support",
+    "Project Guidance",
+    "Research Guidance",
+    "Laboratory Learning Support",
+    "Study Resources",
+    "Exam Preparation"
+  ],
+  "Career & Placement Guidance": [
+    "Resume Review",
+    "Interview Preparation",
+    "Internship Guidance",
+    "Placement Support",
+    "Higher Studies Guidance",
+    "Career Counselling"
+  ],
+  "Administrative & Documentation": [
+    "Bonafide Certificate",
+    "Transcript / Marksheet",
+    "Scholarship Query",
+    "Fee / Payment Query",
+    "Admission / Enrollment",
+    "ID Card",
+    "Official Records",
+    "General Office Enquiry"
+  ],
+  "Campus Facilities & Maintenance": [
+    "Hostel / Accommodation",
+    "Transport",
+    "Drinking Water",
+    "Washroom / Sanitation",
+    "Electricity / Lighting",
+    "Furniture",
+    "Cleaning / Waste Management",
+    "Accessibility",
+    "Safety / Security"
+  ],
+  "Student & Community Support": [
+    "Student Guidance",
+    "Peer Support",
+    "Accessibility Assistance",
+    "Community Concern",
+    "Volunteer Assistance",
+    "Other Support Request"
   ]
 };
 
