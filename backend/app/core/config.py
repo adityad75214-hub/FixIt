@@ -34,6 +34,13 @@ class Settings(BaseSettings):
     PUBLIC_REGISTRATION_ENABLED: bool = True
     DOCS_ENABLED: bool = True
 
+    SMTP_HOST: Optional[str] = None
+    SMTP_PORT: int = 587
+    SMTP_USERNAME: Optional[str] = None
+    SMTP_PASSWORD: Optional[str] = None
+    SMTP_FROM_EMAIL: Optional[str] = None
+    SMTP_STARTTLS: bool = True
+
     SLA_CRITICAL_HOURS: int = 2
     SLA_HIGH_HOURS: int = 8
     SLA_MEDIUM_HOURS: int = 24
