@@ -6,7 +6,8 @@ import { useAuth } from '../context/AuthContext';
 const DEMO_MODE_ENABLED = import.meta.env.DEV && import.meta.env.VITE_DEMO_MODE_ENABLED !== 'false';
 const PUBLIC_REGISTRATION_ENABLED = import.meta.env.VITE_PUBLIC_REGISTRATION_ENABLED !== 'false';
 
-export default function LoginPage() {\n  const params = new URLSearchParams(window.location.search);\n  const audience = params.get('audience');\n  const requestedRole = params.get('role');\n  const loginHeading = audience === 'staff' ? 'Staff & Administrator Sign In' : requestedRole === 'faculty' ? 'Faculty Sign In' : requestedRole === 'student' ? 'Student Sign In' : 'Sign in to your account';
+export default function LoginPage() {
+  const params = new URLSearchParams(window.location.search);\n  const audience = params.get('audience');\n  const requestedRole = params.get('role');\n  const loginHeading = audience === 'staff' ? 'Staff & Administrator Sign In' : requestedRole === 'faculty' ? 'Faculty Sign In' : requestedRole === 'student' ? 'Student Sign In' : 'Sign in to your account';
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
