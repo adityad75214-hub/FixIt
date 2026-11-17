@@ -20,7 +20,7 @@ export default function Navbar({ onToggleSidebar }) {
   const roleLabels = {
     student: { label: t('Student'), bg: 'rgba(37, 99, 235, 0.12)', text: 'var(--brand-blue)' },
     faculty: { label: t('Faculty'), bg: 'rgba(139, 92, 246, 0.12)', text: '#8B5CF6' },
-    staff: { label: t('IT Staff'), bg: 'rgba(22, 163, 74, 0.12)', text: '#16A34A' },
+    staff: { label: t('Support Staff'), bg: 'rgba(22, 163, 74, 0.12)', text: '#16A34A' },
     admin: { label: t('Administrator'), bg: 'rgba(220, 38, 38, 0.12)', text: '#DC2626' },
   };
 
@@ -73,7 +73,7 @@ export default function Navbar({ onToggleSidebar }) {
           </div>
           <div>
             <span style={{ fontSize: '1.25rem', fontWeight: '800', color: 'var(--text-main)', letterSpacing: '-0.02em' }}>FixIt</span>
-            <span style={{ fontSize: '0.6875rem', display: 'block', color: 'var(--text-muted)', lineHeight: '1', fontWeight: '500' }}>{t('CAMPUS IT HELPDESK')}</span>
+            <span style={{ fontSize: '0.6875rem', display: 'block', color: 'var(--text-muted)', lineHeight: '1', fontWeight: '500' }}>{t('CAMPUS SUPPORT PLATFORM')}</span>
           </div>
         </Link>
       </div>
