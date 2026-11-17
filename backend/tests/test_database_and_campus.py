@@ -138,3 +138,51 @@ def test_admin_can_add_custom_locations_and_students_can_view_them(client, admin
     visible = client.get(f"/api/campus/locations?campus_id={campus_id}", headers=student_headers)
     assert visible.status_code == 200
     assert any(item["name"] == "Hostel Common Room" for item in visible.json())
+
+
+def test_campus_and_ticket_data_are_isolated_between_institutions(client, admin_token):
+    import uuid
+    from app.core.database import get_database
+    from app.core.security import create_access_token
+
+    db = get_database()
+    institution_id = f"INST-TEST-{uuid.uuid4().hex[:8].upper()}"
+    db.institutions.insert_one({"_id": institution_id, "name": "Second College", "slug": f"second-{uuid.uuid4().hex[:6]}", "status": "active", "email_domains": []})
+    second_admin_id = f"USR-{uuid.uuid4().hex[:10].upper()}"
+    db.users.insert_one({
+        "_id": second_admin_id, "email": f"admin-{uuid.uuid4().hex[:6]}@second.edu",
+        "name": "Second College Admin", "role": "admin", "institution_id": institution_id,
+        "is_active": True, "token_version": 0, "created_at": "2026-01-01T00:00:00+00:00"
+    })
+    second_token = create_access_token({"sub": second_admin_id, "role": "admin", "ver": 0})
+    second_headers = {"Authorization": f"Bearer {second_token}"}
+    first_headers = {"Authorization": f"Bearer {admin_token}"}
+
+    campus = client.post("/api/campus", headers=second_headers, json={"name": "Second Main Campus", "code": f"S{uuid.uuid4().hex[:6].upper()}"})
+    assert campus.status_code == 201, campus.text
+    second_campus_id = campus.json()["id"]
+
+    first_campuses = client.get("/api/campus", headers=first_headers)
+    assert first_campuses.status_code == 200
+    assert all(item["id"] != second_campus_id for item in first_campuses.json())
+
+    cross_building = client.post("/api/campus/buildings", headers=first_headers, json={
+        "campus_id": second_campus_id, "name": "Unauthorized Building",
+        "code": f"X{uuid.uuid4().hex[:5].upper()}", "total_floors": 1
+    })
+    assert cross_building.status_code == 400
+
+    foreign_ticket_id = f"TCK-{uuid.uuid4().hex[:10].upper()}"
+    db.tickets.insert_one({
+        "_id": foreign_ticket_id, "ticket_id": f"FOREIGN-{uuid.uuid4().hex[:6].upper()}",
+        "institution_id": institution_id, "title": "Second college issue", "description": "Private issue",
+        "category": "Facilities", "priority": "low", "status": "open", "building": "Hostel",
+        "floor": "Ground", "room": "Common Room", "created_by": {"id": second_admin_id},
+        "created_at": "2026-01-01T00:00:00+00:00", "updated_at": "2026-01-01T00:00:00+00:00",
+        "timeline": []
+    })
+    first_tickets = client.get("/api/tickets", headers=first_headers)
+    assert first_tickets.status_code == 200
+    assert all(item["id"] != foreign_ticket_id for item in first_tickets.json())
+    hidden_ticket = client.get(f"/api/tickets/{foreign_ticket_id}", headers=first_headers)
+    assert hidden_ticket.status_code == 404
