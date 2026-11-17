@@ -65,6 +65,13 @@ describe('Language preferences', () => {
     }
   });
 
+  it('restores the saved language on a fresh provider mount', () => {
+    localStorage.setItem('fixit_language', 'ta');
+    render(<LanguageProvider><LanguageHarness /></LanguageProvider>);
+    expect(screen.getByTestId('language').textContent).toBe('ta');
+    expect(screen.getByTestId('notifications').textContent).toBe('அறிவிப்புகள்');
+  });
+
   it('falls back to English for unsupported language codes', () => {
     render(
       <LanguageProvider>
