@@ -42,6 +42,7 @@ async def get_full_campus_hierarchy(current_user: dict = Depends(get_current_use
             "id": str(f["_id"]),
             "floor_name": f["floor_name"],
             "floor_number": f.get("floor_number", 0),
+            "block_id": f.get("block_id"),
             "order": f.get("order", 0)
         })
 
@@ -164,6 +165,7 @@ async def list_floors(
             id=str(d["_id"]),
             building_id=d["building_id"],
             floor_number=d.get("floor_number", 0),
+            block_id=d.get("block_id"),
             floor_name=d["floor_name"],
             is_active=d.get("is_active", True),
             order=d.get("order", 0)
@@ -180,6 +182,10 @@ async def create_floor(
     building = await db.buildings.find_one({"_id": floor_in.building_id, "is_active": True})
     if not building:
         raise HTTPException(status_code=400, detail="Select an existing active building before adding a floor.")
+    if floor_in.block_id:
+        block = await db.blocks.find_one({"_id": floor_in.block_id, "building_id": floor_in.building_id, "is_active": True})
+        if not block:
+            raise HTTPException(status_code=400, detail="The selected block does not belong to the selected building.")
     f_id = f"FLR-{uuid.uuid4().hex[:8].upper()}"
     doc = {"_id": f_id, **floor_in.model_dump()}
     try:
