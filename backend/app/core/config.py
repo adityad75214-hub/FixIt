@@ -86,8 +86,25 @@ class Settings(BaseSettings):
                 raise ValueError("Public registration must remain disabled in production until email ownership verification is implemented")
             if "*" in self.BACKEND_CORS_ORIGINS:
                 raise ValueError("Wildcard CORS origins are not allowed in production")
-            if any(origin.startswith("http://") for origin in self.BACKEND_CORS_ORIGINS):
-                raise ValueError("Production CORS origins must use HTTPS")
+            for origin in self.BACKEND_CORS_ORIGINS:
+                parsed_origin = urlsplit(origin)
+                if parsed_origin.scheme != "https" or not parsed_origin.hostname or parsed_origin.path not in ("", "/") or parsed_origin.query or parsed_origin.fragment:
+                    raise ValueError("Production CORS origins must be HTTPS origins without paths or query strings")
+            if any(host.strip().lower() in {"localhost", "127.0.0.1", "0.0.0.0", "::1"} or "://" in host or "/" in host for host in self.ALLOWED_HOSTS):
+                raise ValueError("Production ALLOWED_HOSTS must contain public hostnames, not local addresses or URLs")
+            if self.APP_BASE_URL:
+                app_url = urlsplit(self.APP_BASE_URL)
+                if app_url.scheme != "https" or not app_url.hostname or app_url.username or app_url.password:
+                    raise ValueError("Production APP_BASE_URL must be a valid HTTPS URL")
+            if self.SMTP_HOST:
+                if not 1 <= self.SMTP_PORT <= 65535:
+                    raise ValueError("SMTP_PORT must be between 1 and 65535")
+                if not (self.SMTP_FROM_EMAIL or self.SMTP_USERNAME):
+                    raise ValueError("SMTP requires SMTP_FROM_EMAIL or SMTP_USERNAME as the sender")
+                if bool(self.SMTP_USERNAME) != bool(self.SMTP_PASSWORD):
+                    raise ValueError("SMTP_USERNAME and SMTP_PASSWORD must be configured together")
+                if not self.APP_BASE_URL:
+                    raise ValueError("APP_BASE_URL is required when production email notifications are enabled")
             if self.COOKIE_SECURE is False:
                 raise ValueError("COOKIE_SECURE cannot be false in production")
             if self.COOKIE_SAMESITE.lower() not in {"lax", "strict", "none"}:
