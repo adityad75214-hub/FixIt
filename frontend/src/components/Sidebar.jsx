@@ -84,7 +84,7 @@ export default function Sidebar({ isOpen, onClose }) {
 
           <NavLink to="/tickets" style={linkStyle} onClick={onClose}>
             <Ticket size={18} />
-            {role === 'admin' ? 'All Tickets' : role === 'staff' ? 'Ticket Queue' : 'My Tickets'}
+            {role === 'admin' ? t('All Tickets') : role === 'staff' ? t('Ticket Queue') : t('My Tickets')}
           </NavLink>
 
           <NavLink to="/knowledge-base" style={linkStyle} onClick={onClose}>
@@ -92,7 +92,7 @@ export default function Sidebar({ isOpen, onClose }) {
           </NavLink>
           <NavLink to="/features" style={linkStyle} onClick={onClose}>
             <Lightbulb size={18} />
-            {role === 'admin' ? 'Feature Roadmap' : 'Suggest a Feature'}
+            {role === 'admin' ? t('Feature Roadmap') : t('Suggest a Feature')}
           </NavLink>
 
           {/* IT Staff Specific Links */}
@@ -140,7 +140,7 @@ export default function Sidebar({ isOpen, onClose }) {
 
         <div style={{ padding: '1rem', borderTop: '1px solid rgba(255, 255, 255, 0.1)', fontSize: '0.75rem', color: 'var(--text-subtle)' }}>
           <div>FixIt Campus IT v2.0</div>
-          <div style={{ fontSize: '0.6875rem', color: 'var(--text-muted)' }}>Enterprise Helpdesk</div>
+          <div style={{ fontSize: '0.6875rem', color: 'var(--text-muted)' }}>{t('Enterprise Helpdesk')}</div>
         </div>
       </aside>
     </>
