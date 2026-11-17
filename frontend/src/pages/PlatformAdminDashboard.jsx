@@ -18,7 +18,7 @@ export default function PlatformAdminDashboard() {
   const loadInstitutions = async () => {
     setLoading(true);
     try {
-      const response = await institutionService.list();
+      const response = await institutionService.manageList();
       const rows = response.data || [];
       setInstitutions(rows);
       setSelectedInstitution((current) => current && rows.some((item) => item.id === current) ? current : (rows[0]?.id || ''));
@@ -61,6 +61,18 @@ export default function PlatformAdminDashboard() {
       setNotice(`College administrator account created for ${response.data.email}. Share the temporary password securely and ask them to change it immediately.`);
     } catch (err) {
       setError(err.response?.data?.detail || 'Administrator account could not be created.');
+    } finally { setSaving(false); }
+  };
+
+  const toggleInstitutionStatus = async (institution) => {
+    const nextStatus = institution.status === 'active' ? 'suspended' : 'active';
+    setSaving(true); setError(''); setNotice('');
+    try {
+      await institutionService.update(institution.id, { status: nextStatus });
+      setNotice(`${institution.name} workspace is now ${nextStatus}.`);
+      await loadInstitutions();
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Workspace status could not be updated.');
     } finally { setSaving(false); }
   };
 
@@ -132,13 +144,13 @@ export default function PlatformAdminDashboard() {
       </div>
 
       <section className="card" style={{ marginTop: '1.25rem' }}>
-        <div className="card-header"><h2 className="card-title"><Building2 size={18} /> Registered institution workspaces</h2><span className="feature-status">{institutions.length} active</span></div>
+        <div className="card-header"><h2 className="card-title"><Building2 size={18} /> Registered institution workspaces</h2><span className="feature-status">{institutions.length} registered</span></div>
         {loading ? <p>Loading workspaces…</p> : institutions.length === 0 ? <p>No active institution workspaces yet.</p> : (
           <div className="table-responsive">
             <table className="table">
-              <thead><tr><th>Institution</th><th>Workspace</th><th>Approved domains</th><th>Status</th></tr></thead>
+              <thead><tr><th>Institution</th><th>Workspace</th><th>Approved domains</th><th>Status</th><th>Access</th></tr></thead>
               <tbody>{institutions.map((item) => <tr key={item.id}>
-                <td>{item.name}</td><td>{item.slug}</td><td>{item.email_domains?.join(', ') || 'Invitation only'}</td><td>{item.status}</td>
+                <td>{item.name}</td><td>{item.slug}</td><td>{item.email_domains?.join(', ') || 'Invitation only'}</td><td>{item.status}</td><td><button type="button" className="btn btn-secondary" disabled={saving || item.id === 'INST-DEFAULT'} onClick={() => toggleInstitutionStatus(item)}>{item.status === 'active' ? 'Suspend' : 'Reactivate'}</button></td>
               </tr>)}</tbody>
             </table>
           </div>
