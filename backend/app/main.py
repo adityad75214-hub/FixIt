@@ -30,6 +30,17 @@ from app.api.feature_requests import router as feature_requests_router
 async def lifespan(app: FastAPI):
     # Startup: Connect to DB
     await connect_to_mongo()
+    # Preserve all existing single-college records under a dedicated default tenant.
+    # Missing tenant IDs are migrated once; subsequent startup runs are idempotent.
+    db = db_manager.db
+    await db.institutions.update_one(
+        {"_id": "INST-DEFAULT"},
+        {"$setOnInsert": {"name": "Default Institution", "slug": "default", "status": "active", "created_at": __import__("datetime").datetime.now(__import__("datetime").timezone.utc).isoformat()}},
+        upsert=True,
+    )
+    for collection_name in ("users", "tickets", "campuses", "buildings", "floors", "rooms", "blocks", "campus_locations", "incidents", "knowledge_base", "categories", "departments", "sla_policies"):
+        await db[collection_name].update_many({"institution_id": {"$exists": False}}, {"$set": {"institution_id": "INST-DEFAULT"}})
+
     if settings.is_production:
         # Provision only generic categories and SLA defaults; never insert demo users/tickets.
         from app.seed_reference_data import seed_reference_data
