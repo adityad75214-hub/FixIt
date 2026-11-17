@@ -18,6 +18,7 @@ class UserBase(BaseModel):
     identifier: Optional[str] = Field(default=None, max_length=100)  # Roll number or Faculty/Staff ID
     specialization: Optional[List[str]] = Field(default=None, max_length=20)  # For IT Staff
     avatar_url: Optional[str] = Field(default=None, max_length=2048)
+    institution_id: Optional[str] = None
 
 class UserCreate(UserBase):
     password: str = Field(..., min_length=12, max_length=128)
@@ -44,6 +45,7 @@ class UserResponse(UserBase):
     is_active: bool = True
     created_at: str
     active_tickets_count: Optional[int] = 0
+    institution_id: Optional[str] = None
 
 class Token(BaseModel):
     access_token: str
