@@ -184,6 +184,31 @@ def test_campus_and_ticket_data_are_isolated_between_institutions(client, admin_
     assert first_campuses.status_code == 200
     assert all(item["id"] != second_campus_id for item in first_campuses.json())
 
+    second_building = client.post("/api/campus/buildings", headers=second_headers, json={
+        "campus_id": second_campus_id, "name": "Second College Hostel",
+        "code": f"H{uuid.uuid4().hex[:5].upper()}", "total_floors": 1
+    })
+    assert second_building.status_code == 201, second_building.text
+    second_block = client.post("/api/campus/blocks", headers=second_headers, json={
+        "building_id": second_building.json()["id"], "name": "North Wing", "code": f"N{uuid.uuid4().hex[:5].upper()}"
+    })
+    assert second_block.status_code == 201, second_block.text
+    second_floor = client.post("/api/campus/floors", headers=second_headers, json={
+        "building_id": second_building.json()["id"], "block_id": second_block.json()["id"],
+        "floor_number": 0, "floor_name": "Ground Floor"
+    })
+    assert second_floor.status_code == 201, second_floor.text
+    second_room = client.post("/api/campus/rooms", headers=second_headers, json={
+        "building_id": second_building.json()["id"], "floor_id": second_floor.json()["id"],
+        "room_number": "G01", "room_name": "Private Room"
+    })
+    assert second_room.status_code == 201, second_room.text
+
+    for endpoint in ("/api/campus/buildings", "/api/campus/blocks", "/api/campus/floors", "/api/campus/rooms"):
+        visible = client.get(endpoint, headers=first_headers)
+        assert visible.status_code == 200
+        assert all(item["id"] not in {second_building.json()["id"], second_block.json()["id"], second_floor.json()["id"], second_room.json()["id"]} for item in visible.json())
+
     cross_building = client.post("/api/campus/buildings", headers=first_headers, json={
         "campus_id": second_campus_id, "name": "Unauthorized Building",
         "code": f"X{uuid.uuid4().hex[:5].upper()}", "total_floors": 1
