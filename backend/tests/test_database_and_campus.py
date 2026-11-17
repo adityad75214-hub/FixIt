@@ -283,6 +283,12 @@ def test_platform_admin_can_onboard_college_and_provision_college_admin(client):
     assert created.status_code == 201, created.text
     institution_id = created.json()["id"]
 
+    duplicate_domain = client.post("/api/institutions", headers=headers, json={
+        "name": "Duplicate Domain College", "slug": f"duplicate-{uuid.uuid4().hex[:6]}",
+        "email_domains": ["newcollege.edu"]
+    })
+    assert duplicate_domain.status_code == 409
+
     admin = client.post(f"/api/institutions/{institution_id}/admins", headers=headers, json={
         "email": f"admin@newcollege.edu", "name": "College Admin", "password": "CollegeAdmin@123"
     })
