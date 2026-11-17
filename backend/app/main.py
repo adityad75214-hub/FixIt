@@ -50,6 +50,10 @@ async def lifespan(app: FastAPI):
         from app.seed import seed_data
         await seed_data()
 
+    # Seed routines can create reference documents; attach any newly created legacy records too.
+    for collection_name in ("users", "tickets", "campuses", "buildings", "floors", "rooms", "blocks", "campus_locations", "incidents", "knowledge_base", "categories", "departments", "sla_policies", "comments", "feedback", "audit_logs", "feature_requests", "uploads"):
+        await db[collection_name].update_many({"institution_id": {"$exists": False}}, {"$set": {"institution_id": "INST-DEFAULT"}})
+
     yield
     # Shutdown: Close DB
     await close_mongo_connection()
