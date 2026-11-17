@@ -26,6 +26,19 @@ async def create_institution(payload: InstitutionCreate, current_user: dict = De
         await db.institutions.insert_one(doc)
     except DuplicateKeyError:
         raise HTTPException(status_code=409, detail="That institution slug or email domain is already registered.") from None
+    # Provision a safe baseline for each new college from platform defaults.
+    default_categories = await db.categories.find({"institution_id": "INST-DEFAULT"}).to_list(None)
+    if default_categories:
+        await db.categories.insert_many([
+            {**{key: value for key, value in item.items() if key != "_id"}, "_id": f"CAT-{uuid.uuid4().hex[:8].upper()}", "institution_id": institution_id}
+            for item in default_categories
+        ])
+    default_policies = await db.sla_policies.find({"institution_id": "INST-DEFAULT"}).to_list(None)
+    if default_policies:
+        await db.sla_policies.insert_many([
+            {**{key: value for key, value in item.items() if key != "_id"}, "_id": f"SLA-{uuid.uuid4().hex[:8].upper()}", "institution_id": institution_id}
+            for item in default_policies
+        ])
     await record_audit_log(action="INSTITUTION_CREATED", resource_type="institution", resource_id=institution_id, actor=current_user, details={"name": payload.name, "slug": payload.slug})
     return InstitutionResponse(id=institution_id, name=payload.name, slug=payload.slug, email_domains=payload.email_domains, status="active")
 
