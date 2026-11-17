@@ -31,3 +31,22 @@ class InstitutionAdminCreate(BaseModel):
     email: str = Field(..., min_length=5, max_length=254)
     name: str = Field(..., min_length=2, max_length=120)
     password: str = Field(..., min_length=12, max_length=128)
+
+
+class InstitutionUpdate(BaseModel):
+    name: Optional[str] = Field(default=None, min_length=2, max_length=160)
+    email_domains: Optional[List[str]] = Field(default=None, max_length=20)
+    status: Optional[str] = Field(default=None, pattern="^(active|suspended)$")
+
+    @field_validator("email_domains")
+    @classmethod
+    def normalize_domains(cls, values):
+        if values is None:
+            return values
+        result = []
+        for value in values:
+            domain = value.strip().lower().lstrip("@")
+            if not domain or "." not in domain or "@" in domain or len(domain) > 253:
+                raise ValueError("Enter valid email domains such as college.edu")
+            result.append(domain)
+        return sorted(set(result))
