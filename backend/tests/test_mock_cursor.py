@@ -6,8 +6,9 @@ from app.core.database import MockAsyncCursor
 
 
 def test_mock_cursor_async_iteration_ends_normally():
-    cursor = MockAsyncCursor(mongomock.MongoClient().db.items.find({}))
-    cursor.sync_cursor.collection.insert_many([{"value": 1}, {"value": 2}])
+    collection = mongomock.MongoClient().db.items
+    collection.insert_many([{"value": 1}, {"value": 2}])
+    cursor = MockAsyncCursor(collection.find({}))
 
     async def collect():
         return [item async for item in cursor]
@@ -16,7 +17,8 @@ def test_mock_cursor_async_iteration_ends_normally():
 
 
 def test_empty_mock_cursor_async_iteration_returns_empty_list():
-    cursor = MockAsyncCursor(mongomock.MongoClient().db.items.find({}))
+    collection = mongomock.MongoClient().db.items
+    cursor = MockAsyncCursor(collection.find({}))
 
     async def collect():
         return [item async for item in cursor]
