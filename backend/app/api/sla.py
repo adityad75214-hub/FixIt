@@ -6,13 +6,14 @@ from app.core.security import require_roles, get_current_user
 from app.core.audit import record_audit_log
 from app.models.sla import SLAPolicyResponse, SLAPolicyCreate
 from app.services.sla_service import check_ticket_sla
+from app.core.tenancy import institution_id_for, scoped_filter
 
 router = APIRouter(prefix="/sla", tags=["SLA Policies"])
 
 @router.get("/policies", response_model=List[SLAPolicyResponse])
 async def get_sla_policies(current_user: dict = Depends(get_current_user)):
     db = get_database()
-    policies = await db.sla_policies.find().to_list(10)
+    policies = await db.sla_policies.find({"institution_id": institution_id_for(current_user)}).to_list(10)
     return [
         SLAPolicyResponse(
             id=str(p["_id"]),
@@ -35,7 +36,7 @@ async def update_sla_policy(
     now_iso = datetime.now(timezone.utc).isoformat()
 
     await db.sla_policies.update_one(
-        {"priority": priority.lower()},
+        {"priority": priority.lower(), "institution_id": institution_id_for(current_user)},
         {
             "$set": {
                 "target_resolution_hours": policy_in.target_resolution_hours,
@@ -59,7 +60,7 @@ async def update_sla_policy(
         }
     )
 
-    updated = await db.sla_policies.find_one({"priority": priority.lower()})
+    updated = await db.sla_policies.find_one({"priority": priority.lower(), "institution_id": institution_id_for(current_user)})
     return SLAPolicyResponse(
         id=str(updated["_id"]),
         priority=updated["priority"],
@@ -73,7 +74,7 @@ async def update_sla_policy(
 async def get_overdue_tickets(current_user: dict = Depends(require_roles("admin", "staff"))):
     db = get_database()
     # Find all active tickets
-    active_query = {"status": {"$in": ["open", "assigned", "in_progress", "on_hold", "reopened"]}}
+    active_query = {"institution_id": institution_id_for(current_user), "status": {"$in": ["open", "assigned", "in_progress", "on_hold", "reopened"]}}
     if current_user["role"] == "staff":
         active_query["$or"] = [
             {"assigned_to.id": current_user["id"]},
