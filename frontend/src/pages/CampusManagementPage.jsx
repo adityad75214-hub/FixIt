@@ -55,6 +55,7 @@ export default function CampusManagementPage() {
 
   const selectedBuilding = useMemo(() => buildings.find(b => b.id === roomForm.building_id), [buildings, roomForm.building_id]);
   const [roomFloors, setRoomFloors] = useState([]);
+  const [locationFloors, setLocationFloors] = useState([]);
   useEffect(() => {
     if (!roomForm.building_id) { setRoomFloors([]); setRoomForm(prev => ({ ...prev, floor_id: '' })); return; }
     campusService.getFloors(roomForm.building_id).then(res => {
@@ -63,6 +64,13 @@ export default function CampusManagementPage() {
       setRoomForm(prev => ({ ...prev, floor_id: rows.some(f => f.id === prev.floor_id) ? prev.floor_id : (rows[0]?.id || '') }));
     }).catch(() => { setRoomFloors([]); setRoomForm(prev => ({ ...prev, floor_id: '' })); });
   }, [roomForm.building_id]);
+
+  useEffect(() => {
+    if (!locationForm.building_id) { setLocationFloors([]); return; }
+    campusService.getFloors(locationForm.building_id)
+      .then(res => setLocationFloors(res.data || []))
+      .catch(() => setLocationFloors([]));
+  }, [locationForm.building_id]);
 
   const submit = async (event) => {
     event.preventDefault();
@@ -159,7 +167,8 @@ export default function CampusManagementPage() {
               <div className="form-group"><label className="form-label" htmlFor="location-category">Location category</label><select id="location-category" className="form-control" value={locationForm.category} onChange={e => setLocationForm({ ...locationForm, category: e.target.value })}>{['classroom','laboratory','hostel_room','washroom','office','library','canteen','auditorium','seminar_hall','medical_centre','sports_area','parking','gate','corridor','staircase','elevator','common_room','dining_hall','study_room','other'].map(v => <option key={v} value={v}>{v.replaceAll('_',' ').replace(/\b\w/g, c => c.toUpperCase())}</option>)}</select></div>
               <div className="form-group"><label className="form-label" htmlFor="location-campus">Campus</label><select id="location-campus" className="form-control" required value={locationForm.campus_id} onChange={e => setLocationForm({ ...locationForm, campus_id: e.target.value })}><option value="">Select campus</option>{campuses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select></div>
               <div className="form-group"><label className="form-label" htmlFor="location-building">Building (optional for outdoor areas)</label><select id="location-building" className="form-control" value={locationForm.building_id} onChange={e => setLocationForm({ ...locationForm, building_id: e.target.value, block_id: '', floor_id: '' })}><option value="">No building / outdoor location</option>{buildings.filter(b => !locationForm.campus_id || b.campus_id === locationForm.campus_id).map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select></div>
-              <div className="form-group"><label className="form-label" htmlFor="location-floor">Floor (optional)</label><select id="location-floor" className="form-control" value={locationForm.floor_id} onChange={e => setLocationForm({ ...locationForm, floor_id: e.target.value })}><option value="">No specific floor</option>{roomFloors.map(f => <option key={f.id} value={f.id}>{f.floor_name}</option>)}</select></div>
+              <div className="form-group"><label className="form-label" htmlFor="location-block">Block / wing (optional)</label><select id="location-block" className="form-control" value={locationForm.block_id} onChange={e => setLocationForm({ ...locationForm, block_id: e.target.value })}><option value="">No specific block</option>{(hierarchy.find(b => b.id === locationForm.building_id)?.blocks || []).map(block => <option key={block.id} value={block.id}>{block.name}</option>)}</select></div>
+               <div className="form-group"><label className="form-label" htmlFor="location-floor">Floor (optional)</label><select id="location-floor" className="form-control" value={locationForm.floor_id} onChange={e => setLocationForm({ ...locationForm, floor_id: e.target.value })}><option value="">No specific floor</option>{locationFloors.map(f => <option key={f.id} value={f.id}>{f.floor_name}</option>)}</select></div>
               <div className="form-group"><label className="form-label" htmlFor="location-code">Location code (optional)</label><input id="location-code" className="form-control" value={locationForm.code} onChange={e => setLocationForm({ ...locationForm, code: e.target.value.toUpperCase() })} placeholder="CLS-204" /></div>
               <div className="form-group"><label className="form-label" htmlFor="location-description">Description (optional)</label><textarea id="location-description" className="form-control" value={locationForm.description} onChange={e => setLocationForm({ ...locationForm, description: e.target.value })} placeholder="Directions or additional details" /></div>
             </>}
@@ -173,8 +182,9 @@ export default function CampusManagementPage() {
           <div className="card-header"><h2 className="card-title"><Building2 size={18} /> Existing campus hierarchy</h2><span className="feature-status">{buildings.length} buildings</span></div>
           {loading ? <p style={{ color: 'var(--text-muted)' }}>Loading campus data…</p> : hierarchy.length === 0 ? <p style={{ color: 'var(--text-muted)' }}>No buildings configured yet. Add a campus and its buildings to activate location selection in ticket reporting.</p> : (
             <div className="campus-tree">
+              {customLocations.filter(location => !location.building_id).length > 0 && <div className="campus-tree-building"><div className="campus-tree-title"><School size={16} /><strong>Campus-wide / Outdoor locations</strong></div>{customLocations.filter(location => !location.building_id).map(location => <div className="campus-tree-floor" key={location.id}><div><DoorOpen size={14} /> {location.name} <small>({location.category.replaceAll('_', ' ')})</small></div></div>)}</div>}
               {hierarchy.map(building => <div className="campus-tree-building" key={building.id}>
-                <div className="campus-tree-title"><Building2 size={16} /><strong>{building.name}</strong><span>{building.code}</span></div>
+                <div className="campus-tree-title"><Building2 size={16} /><strong>{building.name}</strong><span>{building.code}</span><small>{campuses.find(c => c.id === building.campus_id)?.name || 'Campus'}</small></div>
                 {(building.blocks || []).map(block => <div className="campus-tree-floor" key={block.id}><div><Layers3 size={14} /> {block.name} <small>{block.code}</small></div></div>)}
                 {(building.floors || []).map(floor => <div className="campus-tree-floor" key={floor.id}><div><Layers3 size={14} /> {floor.floor_name}</div><ul>{(floor.rooms || []).map(room => <li key={room.id}><span>{room.room_number}</span>{room.room_name && ` · ${room.room_name}`}{room.department && <small> — {room.department}</small>}</li>)}</ul></div>)}
                 {customLocations.filter(location => location.building_id === building.id).map(location => <div className="campus-tree-floor" key={location.id}><div><DoorOpen size={14} /> {location.name} <small>({location.category.replaceAll('_', ' ')})</small></div></div>)}
