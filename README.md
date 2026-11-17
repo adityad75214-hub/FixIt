@@ -112,3 +112,31 @@ The deployment template deliberately does not create a database, seed demo users
 - Use a unique administrator password. Do not use demo credentials for a real deployment.
 
 See `backend/README_QA.md` for backend setup and first-administrator bootstrap details.
+
+
+## Multi-institution workspaces
+
+FixIt supports separate institution workspaces. Each workspace owns its users, campus hierarchy, blocks, floors, rooms, custom locations, tickets, support staff, knowledge-base articles, incidents, feedback, analytics, SLA policies and audit events. The API derives the tenant from the authenticated account; clients cannot switch tenants by submitting another institution ID.
+
+### Institution onboarding
+
+1. Bootstrap the first platform operator from the backend directory:
+   `python scripts/create_platform_admin.py`
+   The script prompts for the email, name and password and creates a `platform_admin` account. Keep this account restricted to FixIt platform operations.
+2. Sign in and create an institution through `POST /api/institutions` with a name, unique slug and approved email domains. Example:
+   ```json
+   {
+     "name": "Example College",
+     "slug": "example-college",
+     "email_domains": ["example.edu"]
+   }
+   ```
+3. Provision its first college administrator through `POST /api/institutions/{institution_id}/admins`. Use a strong one-time password and have the administrator change it after first login.
+4. The college administrator signs in and configures campuses, buildings, blocks, floors, rooms, hostels and other locations from Campus Management. They can create students, faculty and support staff in their own institution only.
+5. Students can select their college workspace during development registration. When an institution has approved email domains, the backend checks the email domain. Institutions without configured domains require administrator-provisioned accounts.
+
+### Tenant migration
+
+On startup, legacy records without an `institution_id` are assigned to `INST-DEFAULT` and preserved. New records are written with the authenticated user's institution. Existing deployments should take a database backup before upgrading and verify the default workspace's ownership before inviting another college.
+
+The platform administrator role is separate from college administrator access. College administrators cannot create or promote platform administrators. The bootstrap script is intended for the first platform operator only.
