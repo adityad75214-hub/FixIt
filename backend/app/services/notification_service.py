@@ -64,7 +64,7 @@ async def send_notification(
         ):
             body = message
             if link:
-                body += f"\\n\\nOpen FixIt: {link}"
+                body += f"\n\nOpen FixIt: {settings.APP_BASE_URL.rstrip('/') + link if settings.APP_BASE_URL and link.startswith('/') else link}"
             try:
                 await asyncio.to_thread(_send_email, user["email"], title, body)
             except Exception as email_error:
