@@ -34,6 +34,8 @@ class Settings(BaseSettings):
     PUBLIC_REGISTRATION_ENABLED: bool = True
     DOCS_ENABLED: bool = True
 
+    APP_BASE_URL: Optional[str] = None
+
     SMTP_HOST: Optional[str] = None
     SMTP_PORT: int = 587
     SMTP_USERNAME: Optional[str] = None
