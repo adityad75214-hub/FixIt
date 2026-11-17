@@ -433,8 +433,11 @@ export default function CreateTicketPage() {
     hierarchy.filter(b => !formData.campus_id || b.campus_id === formData.campus_id).forEach(b => {
       if (b.name) set.add(b.name);
     });
+    if (customLocations.some(location => !location.building_id && (!formData.campus_id || location.campus_id === formData.campus_id))) {
+      set.add('Campus-wide / Outdoor');
+    }
     return Array.from(set);
-  }, [hierarchy, formData.campus_id]);
+  }, [hierarchy, formData.campus_id, customLocations]);
 
   // Resolve the selected building within the chosen campus.
   const selectedBuildingObj = hierarchy.find(
@@ -443,11 +446,12 @@ export default function CreateTicketPage() {
 
   // Dynamic floor suggestions: database floors if matching building, plus standard floor list
   const allFloors = useMemo(() => {
+    if (formData.building === 'Campus-wide / Outdoor') return ['Outdoor', 'Not applicable'];
     if (selectedBuildingObj && selectedBuildingObj.floors?.length > 0) {
       return selectedBuildingObj.floors.map(f => f.floor_name);
     }
     return DEMO_MODE_ENABLED && (!formData.campus_id || Boolean(selectedBuildingObj)) ? PREDEFINED_FLOORS : [];
-  }, [selectedBuildingObj, formData.campus_id]);
+  }, [selectedBuildingObj, formData.campus_id, formData.building]);
 
   // Dynamic room suggestions
   const selectedFloorObj = selectedBuildingObj?.floors?.find(
@@ -455,6 +459,9 @@ export default function CreateTicketPage() {
   );
 
   const allRooms = useMemo(() => {
+    if (formData.building === 'Campus-wide / Outdoor') {
+      return customLocations.filter(location => !location.building_id && (!formData.campus_id || location.campus_id === formData.campus_id)).map(location => location.name);
+    }
     const configuredRooms = selectedFloorObj?.rooms?.map(r => r.room_number) || [];
     const configuredPlaces = customLocations
       .filter(location => location.building_id === selectedBuildingObj?.id
@@ -463,7 +470,7 @@ export default function CreateTicketPage() {
     const configured = Array.from(new Set([...configuredRooms, ...configuredPlaces]));
     if (configured.length) return configured;
     return DEMO_MODE_ENABLED && (!formData.campus_id || Boolean(selectedBuildingObj && (!selectedBuildingObj.floors?.length || selectedFloorObj))) ? PREDEFINED_ROOMS : [];
-  }, [selectedFloorObj, selectedBuildingObj, formData.campus_id, customLocations]);
+  }, [selectedFloorObj, selectedBuildingObj, formData.campus_id, formData.building, customLocations]);
 
   // All categories
   const allCategories = useMemo(() => {
