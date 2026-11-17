@@ -139,8 +139,8 @@ export default function Sidebar({ isOpen, onClose }) {
         </div>
 
         <div style={{ padding: '1rem', borderTop: '1px solid rgba(255, 255, 255, 0.1)', fontSize: '0.75rem', color: 'var(--text-subtle)' }}>
-          <div>FixIt Campus IT v2.0</div>
-          <div style={{ fontSize: '0.6875rem', color: 'var(--text-muted)' }}>{t('Enterprise Helpdesk')}</div>
+          <div>FixIt Campus Support v2.1</div>
+          <div style={{ fontSize: '0.6875rem', color: 'var(--text-muted)' }}>{t('Campus Support Platform')}</div>
         </div>
       </aside>
     </>
