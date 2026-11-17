@@ -184,6 +184,8 @@ async def init_indexes(db):
         await db.feedback.create_index("ticket_id", unique=True)
         await db.knowledge_base.create_index("category")
         await db.knowledge_base_votes.create_index([("article_id", 1), ("user_id", 1)], unique=True)
+        await db.uploads.create_index("user_id")
+        await db.uploads.create_index("ticket_id")
         await db.incidents.create_index("status")
         await db.feature_requests.create_index([("created_by.id", 1), ("created_at", -1)])
         await db.counters.create_index("name", unique=True)
