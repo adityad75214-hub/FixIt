@@ -525,13 +525,18 @@ export default function TicketDetailPage() {
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.875rem', fontSize: '0.875rem' }}>
               <div>
+                <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.75rem' }}>Problem Type</span>
+                <span style={{ fontWeight: '600', color: 'var(--text-main)', textTransform: 'capitalize' }}>{(ticket.problem_domain || 'technical').replaceAll('_', ' ')}</span>
+              </div>
+
+              <div>
                 <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.75rem' }}>Category & Subcategory</span>
                 <span style={{ fontWeight: '600', color: 'var(--text-main)' }}>{ticket.category}</span>
                 {ticket.subcategory && <span style={{ color: 'var(--text-muted)' }}> • {ticket.subcategory}</span>}
               </div>
 
               <div>
-                <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.75rem' }}>Campus Location</span>
+                <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.75rem' }}>{ticket.location_type === 'campus' || !ticket.location_type ? 'Campus Location' : 'Location'}</span>
                 <span style={{ fontWeight: '600', color: 'var(--text-main)' }}>
                   {ticket.building} ({ticket.floor}) - {ticket.room}
                 </span>
