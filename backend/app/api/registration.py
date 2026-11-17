@@ -26,7 +26,7 @@ class RegistrationRequest(BaseModel):
     institution_slug: str = Field(..., min_length=2, max_length=60)
     name: str = Field(..., min_length=2, max_length=120)
     email: EmailStr = Field(..., max_length=254)
-        role: str = Field(..., pattern="^(student|faculty)$")
+    role: str = Field(..., pattern="^(student|faculty)$")
     department: str = Field(..., min_length=2, max_length=100)
     identifier: str = Field(..., min_length=2, max_length=100)
     phone: str | None = Field(default=None, max_length=30)
@@ -83,7 +83,7 @@ async def request_registration_code(payload: RegistrationRequest, request: Reque
         "institution_slug": institution["slug"],
         "name": payload.name.strip(),
         "email": email,
-                "role": payload.role,
+        "role": payload.role,
         "department": payload.department.strip(),
         "identifier": payload.identifier.strip(),
         "phone": payload.phone,
