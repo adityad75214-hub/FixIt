@@ -13,6 +13,7 @@ from app.api.users import router as users_router
 from app.api.tickets import router as tickets_router
 from app.api.assignments import router as assignments_router
 from app.api.comments import router as comments_router
+from app.api.uploads import router as uploads_router
 from app.api.notifications import router as notifications_router
 from app.api.categories import router as categories_router
 from app.api.campus import router as campus_router
@@ -96,6 +97,7 @@ app.include_router(users_router, prefix=settings.API_V1_STR)
 app.include_router(tickets_router, prefix=settings.API_V1_STR)
 app.include_router(assignments_router, prefix=settings.API_V1_STR)
 app.include_router(comments_router, prefix=settings.API_V1_STR)
+app.include_router(uploads_router, prefix=settings.API_V1_STR)
 app.include_router(notifications_router, prefix=settings.API_V1_STR)
 app.include_router(categories_router, prefix=settings.API_V1_STR)
 app.include_router(campus_router, prefix=settings.API_V1_STR)
