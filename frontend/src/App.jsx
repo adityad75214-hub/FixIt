@@ -13,6 +13,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 import LandingPage from './pages/LandingPage';
 const LoginPage = lazy(() => import('./pages/LoginPage'));
 const RegisterPage = lazy(() => import('./pages/RegisterPage'));
+const PasswordRecoveryPage = lazy(() => import('./pages/PasswordRecoveryPage'));
 const StudentDashboard = lazy(() => import('./pages/StudentDashboard'));
 const StaffDashboard = lazy(() => import('./pages/StaffDashboard'));
 const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
@@ -79,6 +80,8 @@ export default function App() {
             <Route path="/login" element={<LoginPage />} />
             <Route path="/accept-invitation" element={<AcceptInvitationPage />} />
             <Route path="/register" element={PUBLIC_REGISTRATION_ENABLED ? <RegisterPage /> : <Navigate to="/login" replace />} />
+            <Route path="/forgot-password" element={<PasswordRecoveryPage />} />
+            <Route path="/reset-password" element={<PasswordRecoveryPage />} />
 
             {/* Authenticated Application Routes */}
             <Route element={<ProtectedRoute />}>
