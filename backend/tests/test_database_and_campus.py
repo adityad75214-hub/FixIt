@@ -272,6 +272,18 @@ def test_platform_admin_can_onboard_college_and_provision_college_admin(client):
     assert categories.status_code == 200
     assert categories.json(), "New college should receive its own default categories"
 
+    managed = client.get("/api/institutions/manage", headers=headers)
+    assert managed.status_code == 200
+    assert any(item["id"] == institution_id for item in managed.json())
+    suspended = client.put(f"/api/institutions/{institution_id}", headers=headers, json={"status": "suspended"})
+    assert suspended.status_code == 200, suspended.text
+    blocked = client.get("/api/campus", headers=college_headers)
+    assert blocked.status_code == 403
+    reactivated = client.put(f"/api/institutions/{institution_id}", headers=headers, json={"status": "active"})
+    assert reactivated.status_code == 200, reactivated.text
+    restored = client.get("/api/campus", headers=college_headers)
+    assert restored.status_code == 200
+
     denied = client.post("/api/institutions", headers=college_headers, json={
         "name": "Unauthorized College", "slug": f"unauthorized-{uuid.uuid4().hex[:6]}", "email_domains": []
     })
