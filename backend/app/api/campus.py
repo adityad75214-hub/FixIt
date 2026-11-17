@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from app.core.database import get_database
 from app.core.security import get_current_user, require_roles
 from app.core.audit import record_audit_log
+from app.core.tenancy import institution_id_for, scoped_filter, tenant_document
 from app.models.campus import (
     CampusResponse, CampusCreate,
     BuildingResponse, BuildingCreate,
@@ -18,7 +19,7 @@ router = APIRouter(prefix="/campus", tags=["Campus Hierarchy"])
 @router.get("", response_model=List[CampusResponse])
 async def list_campuses(current_user: dict = Depends(get_current_user)):
     db = get_database()
-    docs = await db.campuses.find({"is_active": True}).to_list(None)
+    docs = await db.campuses.find(scoped_filter(current_user, {"is_active": True})).to_list(None)
     return [CampusResponse(id=str(d["_id"]), name=d["name"], code=d["code"], is_active=d.get("is_active", True)) for d in docs]
 
 
@@ -26,11 +27,11 @@ async def list_campuses(current_user: dict = Depends(get_current_user)):
 async def get_full_campus_hierarchy(current_user: dict = Depends(get_current_user)):
     """Returns the full active campus hierarchy: Buildings -> Floors -> Rooms."""
     db = get_database()
-    buildings = await db.buildings.find({"is_active": True}).to_list(None)
-    floors = await db.floors.find({"is_active": True}).to_list(None)
-    rooms = await db.rooms.find({"is_active": True}).to_list(None)
-    blocks = await db.blocks.find({"is_active": True}).to_list(None)
-    locations = await db.campus_locations.find({"is_active": True, "location_type": "custom"}).to_list(None)
+    buildings = await db.buildings.find(scoped_filter(current_user, {"is_active": True})).to_list(None)
+    floors = await db.floors.find(scoped_filter(current_user, {"is_active": True})).to_list(None)
+    rooms = await db.rooms.find(scoped_filter(current_user, {"is_active": True})).to_list(None)
+    blocks = await db.blocks.find(scoped_filter(current_user, {"is_active": True})).to_list(None)
+    locations = await db.campus_locations.find(scoped_filter(current_user, {"is_active": True, "location_type": "custom"})).to_list(None)
 
     # Nest floors into buildings and rooms into floors
     floors_by_building = {}
@@ -94,7 +95,7 @@ async def create_campus(
 ):
     db = get_database()
     campus_id = f"CAMPUS-{uuid.uuid4().hex[:8].upper()}"
-    doc = {"_id": campus_id, **campus_in.model_dump()}
+    doc = tenant_document(current_user, {"_id": campus_id, **campus_in.model_dump()})
     try:
         await db.campuses.insert_one(doc)
     except DuplicateKeyError:
@@ -112,7 +113,7 @@ async def create_campus(
 @router.get("/buildings", response_model=List[BuildingResponse])
 async def list_buildings(current_user: dict = Depends(get_current_user)):
     db = get_database()
-    docs = await db.buildings.find({"is_active": True}).to_list(None)
+    docs = await db.buildings.find(scoped_filter(current_user, {"is_active": True})).to_list(None)
     return [
         BuildingResponse(
             id=str(d["_id"]),
@@ -132,11 +133,11 @@ async def create_building(
     current_user: dict = Depends(require_roles("admin"))
 ):
     db = get_database()
-    campus = await db.campuses.find_one({"_id": building_in.campus_id, "is_active": True})
+    campus = await db.campuses.find_one(scoped_filter(current_user, {"_id": building_in.campus_id, "is_active": True}))
     if not campus:
         raise HTTPException(status_code=400, detail="Select an existing active campus before adding a building.")
     b_id = f"BLD-{uuid.uuid4().hex[:8].upper()}"
-    doc = {"_id": b_id, **building_in.model_dump()}
+    doc = tenant_document(current_user, {"_id": b_id, **building_in.model_dump()})
     try:
         await db.buildings.insert_one(doc)
     except DuplicateKeyError:
@@ -156,7 +157,7 @@ async def list_floors(
     current_user: dict = Depends(get_current_user)
 ):
     db = get_database()
-    query = {"is_active": True}
+    query = {"is_active": True, "institution_id": institution_id_for(current_user)}
     if building_id:
         query["building_id"] = building_id
     docs = await db.floors.find(query).to_list(None)
@@ -179,15 +180,15 @@ async def create_floor(
     current_user: dict = Depends(require_roles("admin"))
 ):
     db = get_database()
-    building = await db.buildings.find_one({"_id": floor_in.building_id, "is_active": True})
+    building = await db.buildings.find_one(scoped_filter(current_user, {"_id": floor_in.building_id, "is_active": True}))
     if not building:
         raise HTTPException(status_code=400, detail="Select an existing active building before adding a floor.")
     if floor_in.block_id:
-        block = await db.blocks.find_one({"_id": floor_in.block_id, "building_id": floor_in.building_id, "is_active": True})
+        block = await db.blocks.find_one(scoped_filter(current_user, {"_id": floor_in.block_id, "building_id": floor_in.building_id, "is_active": True}))
         if not block:
             raise HTTPException(status_code=400, detail="The selected block does not belong to the selected building.")
     f_id = f"FLR-{uuid.uuid4().hex[:8].upper()}"
-    doc = {"_id": f_id, **floor_in.model_dump()}
+    doc = tenant_document(current_user, {"_id": f_id, **floor_in.model_dump()})
     try:
         await db.floors.insert_one(doc)
     except DuplicateKeyError:
@@ -228,11 +229,11 @@ async def create_room(
     current_user: dict = Depends(require_roles("admin"))
 ):
     db = get_database()
-    floor = await db.floors.find_one({"_id": room_in.floor_id, "building_id": room_in.building_id, "is_active": True})
+    floor = await db.floors.find_one(scoped_filter(current_user, {"_id": room_in.floor_id, "building_id": room_in.building_id, "is_active": True}))
     if not floor:
         raise HTTPException(status_code=400, detail="The selected floor does not belong to the selected building.")
     r_id = f"RM-{uuid.uuid4().hex[:8].upper()}"
-    doc = {"_id": r_id, **room_in.model_dump()}
+    doc = tenant_document(current_user, {"_id": r_id, **room_in.model_dump()})
     try:
         await db.rooms.insert_one(doc)
     except DuplicateKeyError:
@@ -255,11 +256,11 @@ async def list_blocks(building_id: Optional[str] = None, current_user: dict = De
 @router.post("/blocks", response_model=BlockResponse, status_code=status.HTTP_201_CREATED)
 async def create_block(block_in: BlockCreate, current_user: dict = Depends(require_roles("admin"))):
     db = get_database()
-    building = await db.buildings.find_one({"_id": block_in.building_id, "is_active": True})
+    building = await db.buildings.find_one(scoped_filter(current_user, {"_id": block_in.building_id, "is_active": True}))
     if not building:
         raise HTTPException(status_code=400, detail="Select an existing active building.")
     block_id = f"BLK-{uuid.uuid4().hex[:8].upper()}"
-    doc = {"_id": block_id, **block_in.model_dump()}
+    doc = tenant_document(current_user, {"_id": block_id, **block_in.model_dump()})
     try:
         await db.blocks.insert_one(doc)
     except DuplicateKeyError:
@@ -275,30 +276,30 @@ async def list_custom_locations(campus_id: Optional[str] = None, building_id: Op
     for key, value in (("campus_id", campus_id), ("building_id", building_id), ("block_id", block_id), ("floor_id", floor_id)):
         if value:
             query[key] = value
-    docs = await db.campus_locations.find(query).sort("order", 1).to_list(None)
+    docs = await db.campus_locations.find(scoped_filter(current_user, query)).sort("order", 1).to_list(None)
     return [LocationResponse(id=str(d["_id"]), **{k: v for k, v in d.items() if k not in ("_id", "location_type")}) for d in docs]
 
 
 @router.post("/locations", response_model=LocationResponse, status_code=status.HTTP_201_CREATED)
 async def create_custom_location(location_in: LocationCreate, current_user: dict = Depends(require_roles("admin"))):
     db = get_database()
-    campus = await db.campuses.find_one({"_id": location_in.campus_id, "is_active": True})
+    campus = await db.campuses.find_one(scoped_filter(current_user, {"_id": location_in.campus_id, "is_active": True}))
     if not campus:
         raise HTTPException(status_code=400, detail="Select an existing active campus.")
     if location_in.building_id:
-        building = await db.buildings.find_one({"_id": location_in.building_id, "campus_id": location_in.campus_id, "is_active": True})
+        building = await db.buildings.find_one(scoped_filter(current_user, {"_id": location_in.building_id, "campus_id": location_in.campus_id, "is_active": True}))
         if not building:
             raise HTTPException(status_code=400, detail="The building does not belong to the selected campus.")
     if location_in.block_id:
-        block = await db.blocks.find_one({"_id": location_in.block_id, "building_id": location_in.building_id, "is_active": True})
+        block = await db.blocks.find_one(scoped_filter(current_user, {"_id": location_in.block_id, "building_id": location_in.building_id, "is_active": True}))
         if not block:
             raise HTTPException(status_code=400, detail="The block does not belong to the selected building.")
     if location_in.floor_id:
-        floor = await db.floors.find_one({"_id": location_in.floor_id, "building_id": location_in.building_id, "is_active": True})
+        floor = await db.floors.find_one(scoped_filter(current_user, {"_id": location_in.floor_id, "building_id": location_in.building_id, "is_active": True}))
         if not floor:
             raise HTTPException(status_code=400, detail="The floor does not belong to the selected building.")
     location_id = f"LOC-{uuid.uuid4().hex[:8].upper()}"
-    doc = {"_id": location_id, **location_in.model_dump(), "location_type": "custom"}
+    doc = tenant_document(current_user, {"_id": location_id, **location_in.model_dump(), "location_type": "custom"})
     try:
         await db.campus_locations.insert_one(doc)
     except DuplicateKeyError:
