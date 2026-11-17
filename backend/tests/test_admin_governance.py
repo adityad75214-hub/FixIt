@@ -24,7 +24,7 @@ def test_college_admin_request_requires_primary_approval(client, admin_token, mo
     import app.services.notification_service as mailer
 
     monkeypatch.setattr(settings, "SMTP_HOST", "smtp.test")
-    monkeypatch.setattr(settings, "SMTP_FROM_EMAIL", "noreply@fixit.test")
+    monkeypatch.setattr(settings, "SMTP_FROM_EMAIL", "noreply@fixit.example")
     monkeypatch.setattr(settings, "APP_BASE_URL", "https://fixit.test")
     sent = {}
     monkeypatch.setattr(mailer, "_send_email", lambda recipient, subject, body: sent.update(recipient=recipient, body=body))
