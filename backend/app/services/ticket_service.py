@@ -21,7 +21,7 @@ async def generate_ticket_id() -> str:
         raise RuntimeError("Ticket sequence counter could not be allocated.")
     return f"FIXIT-{current_year}-{counter['seq']:04d}"
 
-async def validate_campus_location(building: str, floor: str, room: str, campus_id: Optional[str] = None) -> Tuple[bool, Optional[str], Optional[str]]:
+async def validate_campus_location(building: str, floor: str, room: str, campus_id: Optional[str] = None, institution_id: Optional[str] = None) -> Tuple[bool, Optional[str], Optional[str]]:
     """Validate the complete configured hierarchy; never accept a mismatched partial hierarchy."""
     db = get_database()
     if not building or not floor or not room:
@@ -36,6 +36,8 @@ async def validate_campus_location(building: str, floor: str, room: str, campus_
     }
     if campus_id:
         building_query["campus_id"] = campus_id
+    if institution_id:
+        building_query["institution_id"] = institution_id
     b_doc = await db.buildings.find_one(building_query)
     if b_doc:
         b_id = str(b_doc["_id"])
@@ -65,6 +67,7 @@ async def validate_campus_location(building: str, floor: str, room: str, campus_
             # classrooms, gates inside a building, etc.) are valid ticket locations too.
             custom_location = await db.campus_locations.find_one({
                 "location_type": "custom",
+                **({"institution_id": institution_id} if institution_id else {}),
                 "is_active": True,
                 "building_id": b_id,
                 "$or": [{"floor_id": f_id}, {"floor_id": None}, {"floor_id": {"$exists": False}}],
@@ -114,7 +117,8 @@ async def detect_potential_duplicates(
     building: str,
     room: str,
     campus_id: Optional[str] = None,
-    threshold: float = 0.35
+    threshold: float = 0.35,
+    institution_id: Optional[str] = None
 ) -> List[Dict[str, Any]]:
     db = get_database()
     query = {
@@ -126,6 +130,8 @@ async def detect_potential_duplicates(
     }
     if campus_id:
         query["campus_id"] = campus_id
+    if institution_id:
+        query["institution_id"] = institution_id
     candidates = await db.tickets.find(query).limit(50).to_list(50)
     duplicates = []
 
