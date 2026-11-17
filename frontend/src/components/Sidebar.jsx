@@ -92,18 +92,18 @@ export default function Sidebar({ isOpen, onClose }) {
             </NavLink>
           )}
 
-          <NavLink to="/tickets" style={linkStyle} onClick={onClose}>
+          {role !== 'platform_admin' && <NavLink to="/tickets" style={linkStyle} onClick={onClose}>
             <Ticket size={18} />
             {role === 'admin' ? t('All Tickets') : role === 'staff' ? t('Ticket Queue') : t('My Tickets')}
-          </NavLink>
+          </NavLink>}
 
-          <NavLink to="/knowledge-base" style={linkStyle} onClick={onClose}>
+          {role !== 'platform_admin' && <NavLink to="/knowledge-base" style={linkStyle} onClick={onClose}>
             <BookOpen size={18} />{t('Knowledge Base')}
-          </NavLink>
-          <NavLink to="/features" style={linkStyle} onClick={onClose}>
+          </NavLink>}
+          {role !== 'platform_admin' && <NavLink to="/features" style={linkStyle} onClick={onClose}>
             <Lightbulb size={18} />
             {role === 'admin' ? t('Feature Roadmap') : t('Suggest a Feature')}
-          </NavLink>
+          </NavLink>}
 
           {/* IT Staff Specific Links */}
           {(role === 'staff' || role === 'admin') && (
