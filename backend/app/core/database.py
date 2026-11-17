@@ -216,6 +216,9 @@ async def init_indexes(db):
         await db.counters.create_index("name", unique=True)
 
         await db.pending_registrations.create_index("email", unique=True)
+        await db.admin_requests.create_index([("institution_id", 1), ("email", 1), ("status", 1)])
+        await db.admin_invitations.create_index("token_hash", unique=True)
+        await db.admin_invitations.create_index([("institution_id", 1), ("email", 1), ("used_at", 1)])
         await db.pending_registrations.create_index("expires_at", expireAfterSeconds=0)
         await db.refresh_tokens.create_index("token_hash", unique=True)
         await db.refresh_tokens.create_index("user_id")
