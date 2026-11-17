@@ -32,6 +32,8 @@ export default function TicketDetailPage() {
   const [staffList, setStaffList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [commentText, setCommentText] = useState('');
+  const [attachmentUrl, setAttachmentUrl] = useState('');
+  const [commentAttachments, setCommentAttachments] = useState([]);
   const [isInternalNote, setIsInternalNote] = useState(false);
   const [submittingComment, setSubmittingComment] = useState(false);
 
@@ -84,9 +86,12 @@ export default function TicketDetailPage() {
     try {
       await commentService.addComment(id, {
         content: commentText,
-        is_internal: isInternalNote
+        is_internal: isInternalNote,
+        attachments: commentAttachments
       });
       setCommentText('');
+      setAttachmentUrl('');
+      setCommentAttachments([]);
       setIsInternalNote(false);
       fetchTicketData();
     } catch (err) {
@@ -310,6 +315,15 @@ export default function TicketDetailPage() {
                     <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', lineHeight: '1.5', whiteSpace: 'pre-line' }}>
                       {c.content}
                     </p>
+                    {c.attachments?.length > 0 && (
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginTop: '0.75rem' }}>
+                        {c.attachments.map((url, index) => (
+                          <a key={index} href={url} target="_blank" rel="noopener noreferrer" className="btn btn-secondary btn-sm">
+                            View attachment {index + 1}
+                          </a>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 ))
               )}
@@ -326,6 +340,15 @@ export default function TicketDetailPage() {
                   rows={3}
                   required
                 />
+              </div>
+
+              <div className="form-group" style={{ marginBottom: '0.75rem' }}>
+                <label className="form-label">Attach a file or image using a secure HTTPS link (up to 5)</label>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <input type="url" className="form-control" placeholder="https://..." value={attachmentUrl} onChange={(e) => setAttachmentUrl(e.target.value)} />
+                  <button type="button" className="btn btn-secondary btn-sm" disabled={!attachmentUrl.startsWith('https://') || commentAttachments.length >= 5} onClick={() => { setCommentAttachments(prev => [...prev, attachmentUrl.trim()]); setAttachmentUrl(''); }}>Add link</button>
+                </div>
+                {commentAttachments.map((url, index) => <div key={url} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', marginTop: '0.35rem' }}><span>Attachment {index + 1}: {url}</span><button type="button" className="btn btn-secondary btn-sm" onClick={() => setCommentAttachments(prev => prev.filter((_, i) => i !== index))}>Remove</button></div>)}
               </div>
 
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
