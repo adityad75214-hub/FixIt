@@ -294,6 +294,8 @@ export default function CreateTicketPage() {
   const [formData, setFormData] = useState({
     title: '',
     description: '',
+    problem_domain: 'technical',
+    location_type: 'campus',
     category: DEMO_MODE_ENABLED ? PREDEFINED_CATEGORIES[0] : '',
     subcategory: DEMO_MODE_ENABLED ? (CATEGORIES_DATA[PREDEFINED_CATEGORIES[0]][0] || '') : '',
     priority: 'medium',
@@ -471,8 +473,9 @@ export default function CreateTicketPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if ((campuses.length > 0 && !formData.campus_id) || !formData.building || !formData.floor || !formData.room) {
-      setError('Please select a campus and provide a valid Building, Floor, and Room.');
+    if (formData.location_type === 'campus' &&
+        ((campuses.length > 0 && !formData.campus_id) || !formData.building || !formData.floor || !formData.room)) {
+      setError('Please select a campus and provide a valid Building, Floor, and Room, or choose a non-campus location type.');
       return;
     }
 
@@ -483,13 +486,15 @@ export default function CreateTicketPage() {
       const payload = {
         title: formData.title,
         description: formData.description,
+        problem_domain: formData.problem_domain,
+        location_type: formData.location_type,
         category: formData.category,
         subcategory: formData.subcategory || null,
         priority: formData.priority,
-        campus_id: formData.campus_id || null,
-        building: formData.building,
-        floor: formData.floor,
-        room: formData.room,
+        campus_id: formData.location_type === 'campus' ? (formData.campus_id || null) : null,
+        building: formData.location_type === 'campus' ? formData.building : 'Not applicable',
+        floor: formData.location_type === 'campus' ? formData.floor : 'Not applicable',
+        room: formData.location_type === 'campus' ? formData.room : 'Not applicable',
         department: formData.department || null,
         affected_users: parseInt(formData.affected_users, 10) || 1
       };
@@ -666,6 +671,30 @@ export default function CreateTicketPage() {
             />
           </div>
 
+          {/* General-purpose problem domains */}
+          <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.25rem' }}>
+            <div className="form-group">
+              <label className="form-label" htmlFor="problem-domain">What kind of help do you need? *</label>
+              <select id="problem-domain" name="problem_domain" className="form-control" value={formData.problem_domain} onChange={handleChange} required>
+                <option value="technical">Technical support</option>
+                <option value="academic">Academic and learning support</option>
+                <option value="administrative">Administrative and documentation</option>
+                <option value="facilities">Campus facilities and maintenance</option>
+                <option value="personal_support">Student guidance and personal support</option>
+                <option value="community">Community and shared concerns</option>
+                <option value="other">Other / not sure</option>
+              </select>
+            </div>
+            <div className="form-group">
+              <label className="form-label" htmlFor="location-type">Where does this problem apply? *</label>
+              <select id="location-type" name="location_type" className="form-control" value={formData.location_type} onChange={handleChange} required>
+                <option value="campus">At a campus location</option>
+                <option value="remote">Online / remote</option>
+                <option value="not_applicable">No specific location</option>
+              </select>
+            </div>
+          </div>
+
           {/* Category & Subcategory: Dual-Mode Editable Dropdowns */}
           <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.25rem' }}>
             <div className="form-group">
@@ -711,7 +740,7 @@ export default function CreateTicketPage() {
           {/* Campus is a required parent in a multi-campus installation. */}
           {campuses.length > 0 && <div className="form-group" style={{ maxWidth: '420px' }}>
             <label className="form-label" htmlFor="ticket-campus">Campus *</label>
-            <select id="ticket-campus" name="campus_id" className="form-control" value={formData.campus_id} onChange={e => setFormData(prev => ({ ...prev, campus_id: e.target.value, building: '', floor: '', room: '' }))} required>
+            <select id="ticket-campus" name="campus_id" className="form-control" value={formData.campus_id} onChange={e => setFormData(prev => ({ ...prev, campus_id: e.target.value, building: '', floor: '', room: '' }))} required={formData.location_type === 'campus'}>
               <option value="">Select campus</option>
               {campuses.map(campus => <option key={campus.id} value={campus.id}>{campus.name}</option>)}
             </select>
@@ -732,7 +761,7 @@ export default function CreateTicketPage() {
                 placeholder="Select a configured building"
                 value={formData.building}
                 onChange={handleChange}
-                required
+                required={formData.location_type === 'campus'}
               />
               <datalist id="building-suggestions">
                 {allBuildings.map((b) => (
@@ -753,7 +782,7 @@ export default function CreateTicketPage() {
                 placeholder="Select a configured floor"
                 value={formData.floor}
                 onChange={handleChange}
-                required
+                required={formData.location_type === 'campus'}
               />
               <datalist id="floor-suggestions">
                 {allFloors.map((flr) => (
@@ -774,7 +803,7 @@ export default function CreateTicketPage() {
                 placeholder="Select a configured room"
                 value={formData.room}
                 onChange={handleChange}
-                required
+                required={formData.location_type === 'campus'}
               />
               <datalist id="room-suggestions">
                 {allRooms.map((rm) => (
@@ -783,7 +812,7 @@ export default function CreateTicketPage() {
               </datalist>
             </div>
           </div>
-          <p className="form-hint">Use a registered campus location. If a building, floor, or room is missing, ask an administrator to add it under Campus Setup.</p>
+          <p className="form-hint">{formData.location_type === 'campus' ? 'Use a registered campus location. If a building, floor, or room is missing, ask an administrator to add it under Campus Setup.' : 'Campus building, floor, and room are not required for online or location-independent requests.'}</p>
 
           {/* Department (Derived), Affected Users, Priority */}
           <div className="grid-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.25rem', marginTop: '0.5rem' }}>
