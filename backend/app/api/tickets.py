@@ -249,6 +249,7 @@ async def list_tickets(
     ticket_status: Optional[str] = Query(default=None, alias="status", max_length=30),
     priority: Optional[str] = Query(default=None, max_length=20),
     category: Optional[str] = Query(default=None, max_length=80),
+    problem_domain: Optional[str] = Query(default=None, max_length=40),
     building: Optional[str] = Query(default=None, max_length=100),
     department: Optional[str] = Query(default=None, max_length=100),
     assigned_to_me: Optional[bool] = None,
@@ -292,6 +293,11 @@ async def list_tickets(
         query["priority"] = priority
     if category:
         query["category"] = category
+    if problem_domain:
+        allowed_domains = {"technical", "academic", "administrative", "facilities", "personal_support", "community", "other"}
+        if problem_domain not in allowed_domains:
+            raise HTTPException(status_code=400, detail="Unsupported problem domain filter.")
+        query["problem_domain"] = problem_domain
     if building:
         query["building"] = building
     if department:
