@@ -133,7 +133,7 @@ export default function NotificationDropdown() {
           <div style={{ maxHeight: '350px', overflowY: 'auto' }}>
             {notifications.length === 0 ? (
               <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-subtle)', fontSize: '0.8125rem' }}>
-                No notifications right now
+                {t('No notifications right now')}
               </div>
             ) : (
               notifications.map((n) => (
@@ -174,7 +174,7 @@ export default function NotificationDropdown() {
                         fontWeight: '500'
                       }}
                     >
-                      View ticket <ExternalLink size={10} />
+                      {t('View request')} <ExternalLink size={10} />
                     </Link>
                   )}
                 </div>
