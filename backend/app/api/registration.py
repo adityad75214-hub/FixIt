@@ -1,5 +1,6 @@
 import asyncio
 import secrets
+import hmac
 import uuid
 from datetime import datetime, timedelta, timezone
 
@@ -87,7 +88,7 @@ async def request_registration_code(payload: RegistrationRequest, request: Reque
         "department": payload.department.strip(),
         "identifier": payload.identifier.strip(),
         "phone": payload.phone,
-        "code_hash": __import__("hashlib").sha256(code.encode("utf-8")).hexdigest(),
+        "code_hash": __import__("hashlib").sha256((settings.SECRET_KEY + ":" + code).encode("utf-8")).hexdigest(),
         "attempts": 0,
         "created_at": now,
         "code_sent_at": now,
@@ -140,8 +141,8 @@ async def verify_registration_code(payload: VerifyRegistrationCode, request: Req
         raise HTTPException(status_code=429, detail="Too many incorrect codes. Start registration again.")
 
     import hashlib
-    submitted_hash = hashlib.sha256(payload.code.encode("utf-8")).hexdigest()
-    if not secrets.compare_digest(submitted_hash, pending.get("code_hash", "")):
+    submitted_hash = hashlib.sha256((settings.SECRET_KEY + ":" + payload.code).encode("utf-8")).hexdigest()
+    if not hmac.compare_digest(submitted_hash, pending.get("code_hash", "")):
         await db.pending_registrations.update_one({"_id": pending["_id"]}, {"$inc": {"attempts": 1}})
         raise HTTPException(status_code=400, detail="Incorrect verification code.")
 
