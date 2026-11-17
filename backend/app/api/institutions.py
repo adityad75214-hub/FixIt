@@ -142,6 +142,11 @@ async def accept_institution_admin_invitation(payload: InstitutionAdminInviteAcc
     institution = await db.institutions.find_one({"_id": invite["institution_id"], "status": "active"})
     if not institution:
         raise HTTPException(status_code=400, detail="The institution is unavailable. Contact FixIt support.")
+    invited_domain = invite["email"].rsplit("@", 1)[-1].lower()
+    approved_domains = [str(item).lower().lstrip("@") for item in institution.get("email_domains", [])]
+    if not approved_domains or invited_domain not in approved_domains:
+        await db.admin_invitations.delete_one({"_id": invite["_id"]})
+        raise HTTPException(status_code=403, detail="This invitation no longer matches an approved institution email domain.")
     if await db.users.find_one({"email": invite["email"]}):
         raise HTTPException(status_code=409, detail="An account with this email already exists.")
 
