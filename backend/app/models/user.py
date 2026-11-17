@@ -23,6 +23,7 @@ class UserBase(BaseModel):
 
 class UserCreate(UserBase):
     password: str = Field(..., min_length=12, max_length=128)
+    institution_slug: Optional[str] = Field(default=None, min_length=2, max_length=60)
 
 class UserLogin(BaseModel):
     email: EmailStr = Field(..., max_length=254)
