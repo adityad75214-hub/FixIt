@@ -38,13 +38,17 @@ async def send_notification(
             return
 
         user = await db.users.find_one({"_id": user_id})
-        preferences = await db.user_preferences.find_one({"user_id": user_id}) or {}
+        if not user:
+            return
+        institution_id = user.get("institution_id") or "INST-DEFAULT"
+        preferences = await db.user_preferences.find_one({"user_id": user_id, "institution_id": institution_id}) or {}
         now = datetime.now(timezone.utc).isoformat()
 
         if preferences.get("in_app_notifications", True):
             notif = {
                 "_id": f"NOTIF-{uuid.uuid4().hex[:12].upper()}",
                 "user_id": user_id,
+                "institution_id": institution_id,
                 "title": title,
                 "message": message,
                 "link": link,
