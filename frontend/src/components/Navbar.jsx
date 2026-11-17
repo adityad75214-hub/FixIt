@@ -3,11 +3,13 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Wrench, LogOut, User as UserIcon, Menu, Moon, Sun } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
+import { useLanguage } from '../context/LanguageContext';
 import NotificationDropdown from './NotificationDropdown';
 
 export default function Navbar({ onToggleSidebar }) {
   const { user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
+  const { t } = useLanguage();
   const navigate = useNavigate();
 
   const handleLogout = () => {
@@ -16,10 +18,10 @@ export default function Navbar({ onToggleSidebar }) {
   };
 
   const roleLabels = {
-    student: { label: 'Student', bg: 'rgba(37, 99, 235, 0.12)', text: 'var(--brand-blue)' },
-    faculty: { label: 'Faculty', bg: 'rgba(139, 92, 246, 0.12)', text: '#8B5CF6' },
-    staff: { label: 'IT Staff', bg: 'rgba(22, 163, 74, 0.12)', text: '#16A34A' },
-    admin: { label: 'Administrator', bg: 'rgba(220, 38, 38, 0.12)', text: '#DC2626' },
+    student: { label: t('Student'), bg: 'rgba(37, 99, 235, 0.12)', text: 'var(--brand-blue)' },
+    faculty: { label: t('Faculty'), bg: 'rgba(139, 92, 246, 0.12)', text: '#8B5CF6' },
+    staff: { label: t('IT Staff'), bg: 'rgba(22, 163, 74, 0.12)', text: '#16A34A' },
+    admin: { label: t('Administrator'), bg: 'rgba(220, 38, 38, 0.12)', text: '#DC2626' },
   };
 
   const roleStyle = roleLabels[user?.role] || roleLabels.student;
@@ -41,7 +43,7 @@ export default function Navbar({ onToggleSidebar }) {
       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
         <button
           onClick={onToggleSidebar}
-          aria-label="Toggle navigation menu"
+          aria-label={t('Toggle navigation menu')}
           style={{
             background: 'none',
             border: 'none',
@@ -71,7 +73,7 @@ export default function Navbar({ onToggleSidebar }) {
           </div>
           <div>
             <span style={{ fontSize: '1.25rem', fontWeight: '800', color: 'var(--text-main)', letterSpacing: '-0.02em' }}>FixIt</span>
-            <span style={{ fontSize: '0.6875rem', display: 'block', color: 'var(--text-muted)', lineHeight: '1', fontWeight: '500' }}>CAMPUS IT HELPDESK</span>
+            <span style={{ fontSize: '0.6875rem', display: 'block', color: 'var(--text-muted)', lineHeight: '1', fontWeight: '500' }}>{t('CAMPUS IT HELPDESK')}</span>
           </div>
         </Link>
       </div>
@@ -122,13 +124,13 @@ export default function Navbar({ onToggleSidebar }) {
               {user?.name}
             </div>
             <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-              {user?.department || 'Campus Community'}
+              {user?.department || t('Campus Community')}
             </div>
           </div>
 
           <Link
             to="/profile"
-            aria-label="Profile settings"
+            aria-label={t('Profile settings')}
             style={{
               width: '34px',
               height: '34px',
@@ -146,8 +148,8 @@ export default function Navbar({ onToggleSidebar }) {
 
           <button
             onClick={handleLogout}
-            title="Log Out"
-            aria-label="Log Out"
+            title={t("Log Out")}
+            aria-label={t("Log Out")}
             style={{
               background: 'none',
               border: 'none',
