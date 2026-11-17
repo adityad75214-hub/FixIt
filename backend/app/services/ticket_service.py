@@ -61,10 +61,22 @@ async def validate_campus_location(building: str, floor: str, room: str, campus_
             ],
         })
         if not r_doc:
-            configured_rooms = await db.rooms.count_documents({"floor_id": f_id, "is_active": True})
-            if not settings.is_production and configured_rooms == 0:
+            # Administrator-defined places (hostel common rooms, washrooms, offices,
+            # classrooms, gates inside a building, etc.) are valid ticket locations too.
+            custom_location = await db.campus_locations.find_one({
+                "location_type": "custom",
+                "is_active": True,
+                "building_id": b_id,
+                "$or": [{"floor_id": f_id}, {"floor_id": None}, {"floor_id": {"$exists": False}}],
+                "name": {"$regex": f"^{re.escape(room.strip())}$", "$options": "i"},
+            })
+            if custom_location:
                 return True, None, None
-            return False, f"Room '{room}' is not valid for floor '{floor}' in building '{building}'. Ask an administrator to add it.", None
+            configured_rooms = await db.rooms.count_documents({"floor_id": f_id, "is_active": True})
+            configured_custom = await db.campus_locations.count_documents({"building_id": b_id, "is_active": True, "location_type": "custom"})
+            if not settings.is_production and configured_rooms == 0 and configured_custom == 0:
+                return True, None, None
+            return False, f"Location '{room}' is not configured for floor '{floor}' in building '{building}'. Ask an administrator to add it.", None
         return True, None, r_doc.get("department")
 
     # Legacy locations remain readable for existing installations during migration.
