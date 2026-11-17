@@ -134,6 +134,11 @@ def seed_test_database():
     for art in kb_articles:
         sync_db.knowledge_base.replace_one({"_id": art["_id"]}, art, upsert=True)
 
+    # Fixtures are reseeded for every test, so preserve the same tenant identity
+    # even after the application startup migration has already completed.
+    for collection_name in ("users", "tickets", "campuses", "buildings", "floors", "rooms", "blocks", "campus_locations", "incidents", "knowledge_base", "categories", "departments", "sla_policies", "comments", "feedback", "audit_logs", "feature_requests", "uploads", "notifications", "user_preferences", "knowledge_base_votes"):
+        sync_db[collection_name].update_many({"institution_id": {"$exists": False}}, {"$set": {"institution_id": "INST-DEFAULT"}})
+
 seed_test_database()
 
 @pytest.fixture(scope="session")
