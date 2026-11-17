@@ -85,6 +85,9 @@ class MockAsyncCollection:
     async def drop(self):
         return self.sync_col.drop()
 
+    async def drop_index(self, name: str):
+        return self.sync_col.drop_index(name)
+
 class MockAsyncDatabase:
     def __init__(self, sync_db):
         self.sync_db = sync_db
@@ -182,7 +185,10 @@ async def init_indexes(db):
         await db.audit_logs.create_index("timestamp")
 
         # Campus hierarchy indexes
-        await db.campuses.create_index("code", unique=True)
+        try:
+            await db.campuses.drop_index("code_1")
+        except Exception:
+            pass
         await db.buildings.create_index([("campus_id", 1), ("name", 1)], unique=True)
         await db.buildings.create_index([("campus_id", 1), ("code", 1)], unique=True)
         await db.floors.create_index([("building_id", 1), ("floor_name", 1)], unique=True)
