@@ -51,7 +51,7 @@ def test_unsafe_production_configuration_is_rejected(override):
 @pytest.mark.parametrize(
     "override",
     [
-        {"ALLOWED_HOSTS": ["fixit.example.com", "localhost"]},
+        {"ALLOWED_HOSTS": ["localhost", "127.0.0.1"]},
         {"ALLOWED_HOSTS": ["https://fixit.example.com"]},
         {"BACKEND_CORS_ORIGINS": ["https://fixit.example.com/admin"]},
         {"APP_BASE_URL": "http://fixit.example.com"},
@@ -74,3 +74,11 @@ def test_production_configuration_accepts_complete_smtp_settings():
         SMTP_FROM_EMAIL="notifications@fixit.example.com",
     )
     assert settings.APP_BASE_URL == "https://fixit.example.com"
+
+
+def test_production_allowed_hosts_can_include_loopback_for_container_health_checks():
+    settings = valid_production_settings(
+        ALLOWED_HOSTS=["fixit.example.com", "localhost", "127.0.0.1"]
+    )
+    assert "localhost" in settings.ALLOWED_HOSTS
+    assert "127.0.0.1" in settings.ALLOWED_HOSTS
