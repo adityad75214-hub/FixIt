@@ -7,6 +7,7 @@ from fastapi.responses import StreamingResponse
 from app.core.database import get_database
 from app.core.security import require_roles
 from app.core.audit import record_audit_log
+from app.core.tenancy import institution_id_for
 
 router = APIRouter(prefix="/reports", tags=["Reports & Export"])
 
@@ -27,7 +28,7 @@ async def export_tickets_csv(
     current_user: dict = Depends(require_roles("admin", "staff"))
 ):
     db = get_database()
-    query = {}
+    query = {"institution_id": institution_id_for(current_user)}
     if current_user["role"] == "staff":
         query["$or"] = [
             {"assigned_to.id": current_user["id"]},
