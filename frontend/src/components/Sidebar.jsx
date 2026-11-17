@@ -16,9 +16,11 @@ import {
   AlertTriangle
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 
 export default function Sidebar({ isOpen, onClose }) {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const role = user?.role || 'student';
 
   const linkStyle = ({ isActive }) => ({
@@ -66,20 +68,17 @@ export default function Sidebar({ isOpen, onClose }) {
         className={`sidebar ${isOpen ? 'open' : ''}`}
       >
         <div style={{ padding: '1.25rem 1rem', flex: 1, overflowY: 'auto' }}>
-          <div style={{ fontSize: '0.6875rem', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.08em', color: '#60A5FA', padding: '0 0.5rem 0.625rem 0.5rem' }}>
-            Main Menu
+          <div style={{ fontSize: '0.6875rem', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.08em', color: '#60A5FA', padding: '0 0.5rem 0.625rem 0.5rem' }}>{t('Main Menu')}
           </div>
 
           <NavLink to="/dashboard" style={linkStyle} onClick={onClose}>
-            <LayoutDashboard size={18} />
-            Dashboard
+            <LayoutDashboard size={18} />{t('Dashboard')}
           </NavLink>
 
           {/* Student & Faculty & Admin Links */}
           {(role === 'student' || role === 'faculty' || role === 'admin') && (
             <NavLink to="/tickets/new" style={linkStyle} onClick={onClose}>
-              <PlusCircle size={18} />
-              Report Issue
+              <PlusCircle size={18} />{t('Report Issue')}
             </NavLink>
           )}
 
@@ -89,8 +88,7 @@ export default function Sidebar({ isOpen, onClose }) {
           </NavLink>
 
           <NavLink to="/knowledge-base" style={linkStyle} onClick={onClose}>
-            <BookOpen size={18} />
-            Knowledge Base
+            <BookOpen size={18} />{t('Knowledge Base')}
           </NavLink>
           <NavLink to="/features" style={linkStyle} onClick={onClose}>
             <Lightbulb size={18} />
@@ -100,18 +98,15 @@ export default function Sidebar({ isOpen, onClose }) {
           {/* IT Staff Specific Links */}
           {(role === 'staff' || role === 'admin') && (
             <NavLink to="/incidents" style={linkStyle} onClick={onClose}>
-              <AlertTriangle size={18} />
-              Campus Incidents
+              <AlertTriangle size={18} />{t('Campus Incidents')}
             </NavLink>
           )}
           {role === 'staff' && (
             <>
-              <div style={{ fontSize: '0.6875rem', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.08em', color: '#60A5FA', padding: '1.25rem 0.5rem 0.625rem 0.5rem' }}>
-                IT Staff Portal
+              <div style={{ fontSize: '0.6875rem', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.08em', color: '#60A5FA', padding: '1.25rem 0.5rem 0.625rem 0.5rem' }}>{t('IT Staff Portal')}
               </div>
               <NavLink to="/tickets?assigned_to_me=true" style={linkStyle} onClick={onClose}>
-                <UserCheck size={18} />
-                My Assignments
+                <UserCheck size={18} />{t('My Assignments')}
               </NavLink>
             </>
           )}
@@ -119,32 +114,25 @@ export default function Sidebar({ isOpen, onClose }) {
           {/* Admin Specific Links */}
           {role === 'admin' && (
             <>
-              <div style={{ fontSize: '0.6875rem', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.08em', color: '#60A5FA', padding: '1.25rem 0.5rem 0.625rem 0.5rem' }}>
-                Administration
+              <div style={{ fontSize: '0.6875rem', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.08em', color: '#60A5FA', padding: '1.25rem 0.5rem 0.625rem 0.5rem' }}>{t('Administration')}
               </div>
               <NavLink to="/admin/users" style={linkStyle} onClick={onClose}>
-                <Users size={18} />
-                User Directory
+                <Users size={18} />{t('User Directory')}
               </NavLink>
               <NavLink to="/admin/sla" style={linkStyle} onClick={onClose}>
-                <Clock size={18} />
-                SLA Policies
+                <Clock size={18} />{t('SLA Policies')}
               </NavLink>
               <NavLink to="/admin/reports" style={linkStyle} onClick={onClose}>
-                <BarChart3 size={18} />
-                Analytics & Reports
+                <BarChart3 size={18} />{t('Analytics & Reports')}
               </NavLink>
               <NavLink to="/admin/audit-logs" style={linkStyle} onClick={onClose}>
-                <ShieldAlert size={18} />
-                Audit Logs
+                <ShieldAlert size={18} />{t('Audit Logs')}
               </NavLink>
               <NavLink to="/admin/campus" style={linkStyle} onClick={onClose}>
-                <Building2 size={18} />
-                Campus Setup
+                <Building2 size={18} />{t('Campus Setup')}
               </NavLink>
               <NavLink to="/admin/categories" style={linkStyle} onClick={onClose}>
-                <Tags size={18} />
-                Issue Categories
+                <Tags size={18} />{t('Issue Categories')}
               </NavLink>
             </>
           )}
