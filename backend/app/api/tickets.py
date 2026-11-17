@@ -50,6 +50,8 @@ def format_ticket_doc(doc: Dict[str, Any]) -> TicketResponse:
         title=doc.get("title", ""),
         description=doc.get("description", ""),
         category=doc.get("category", ""),
+        problem_domain=doc.get("problem_domain", "technical"),
+        location_type=doc.get("location_type", "campus"),
         subcategory=doc.get("subcategory"),
         priority=doc.get("priority", TicketPriority.MEDIUM),
         status=doc.get("status", TicketStatus.OPEN),
@@ -113,18 +115,26 @@ async def create_ticket(
 ):
     db = get_database()
 
-    # Strict hierarchy validation: Building -> Floor -> Room
-    is_valid_loc, loc_error, derived_dept = await validate_campus_location(
-        ticket_in.building,
-        ticket_in.floor or "Ground",
-        ticket_in.room,
-        campus_id=ticket_in.campus_id,
-    )
-    if not is_valid_loc:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=loc_error or "Invalid campus location combination provided."
+    # Campus issues use the configured hierarchy; remote and location-independent
+    # requests share the same ticket lifecycle without requiring campus coordinates.
+    derived_dept = None
+    if ticket_in.location_type == "campus":
+        is_valid_loc, loc_error, derived_dept = await validate_campus_location(
+            ticket_in.building,
+            ticket_in.floor or "Ground",
+            ticket_in.room,
+            campus_id=ticket_in.campus_id,
         )
+        if not is_valid_loc:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=loc_error or "Invalid campus location combination provided."
+            )
+    else:
+        ticket_in.campus_id = None
+        ticket_in.building = "Not applicable"
+        ticket_in.floor = "Not applicable"
+        ticket_in.room = "Not applicable"
 
     ticket_custom_id = await generate_ticket_id()
     doc_id = f"TCK-{uuid.uuid4().hex[:10].upper()}"
@@ -183,6 +193,8 @@ async def create_ticket(
         "title": ticket_in.title,
         "description": ticket_in.description,
         "category": ticket_in.category,
+        "problem_domain": ticket_in.problem_domain,
+        "location_type": ticket_in.location_type,
         "subcategory": ticket_in.subcategory,
         "priority": priority.value,
         "status": initial_status,
