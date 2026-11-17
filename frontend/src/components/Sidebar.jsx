@@ -13,7 +13,8 @@ import {
   Lightbulb,
   Building2,
   Tags,
-  AlertTriangle
+  AlertTriangle,
+  Network
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -74,6 +75,15 @@ export default function Sidebar({ isOpen, onClose }) {
           <NavLink to="/dashboard" style={linkStyle} onClick={onClose}>
             <LayoutDashboard size={18} />{t('Dashboard')}
           </NavLink>
+
+          {role === 'platform_admin' && (
+            <>
+              <div style={{ fontSize: '0.6875rem', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.08em', color: '#60A5FA', padding: '1.25rem 0.5rem 0.625rem 0.5rem' }}>Platform Operations</div>
+              <NavLink to="/platform/institutions" style={linkStyle} onClick={onClose}>
+                <Network size={18} />Institution Workspaces
+              </NavLink>
+            </>
+          )}
 
           {/* Student & Faculty & Admin Links */}
           {(role === 'student' || role === 'faculty' || role === 'admin') && (
