@@ -71,6 +71,8 @@ async def _send_admin_invitation(db, institution: dict, request_doc: dict, actor
     invitation = {
         "_id": invitation_id, "email": email, "name": request_doc["name"],
         "role": "admin", "admin_level": admin_level,
+        "department": request_doc.get("department") or "Administration",
+        "designation": request_doc.get("designation"),
         "institution_id": str(institution["_id"]), "token_hash": hash_token(raw_token),
         "created_at": now, "expires_at": now + timedelta(hours=48),
         "created_by": actor["id"], "used_at": None,
