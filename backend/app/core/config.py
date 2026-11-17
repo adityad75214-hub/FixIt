@@ -83,7 +83,8 @@ class Settings(BaseSettings):
             if self.SEED_DEMO_DATA:
                 raise ValueError("SEED_DEMO_DATA must be false in production")
             if self.PUBLIC_REGISTRATION_ENABLED:
-                raise ValueError("Public registration must remain disabled in production until email ownership verification is implemented")
+                if not self.SMTP_HOST or not (self.SMTP_FROM_EMAIL or self.SMTP_USERNAME) or not self.APP_BASE_URL:
+                    raise ValueError("Public registration requires SMTP_HOST, a sender email, and APP_BASE_URL so institutional email verification can be delivered")
             if "*" in self.BACKEND_CORS_ORIGINS:
                 raise ValueError("Wildcard CORS origins are not allowed in production")
             for origin in self.BACKEND_CORS_ORIGINS:
