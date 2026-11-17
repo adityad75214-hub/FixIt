@@ -7,6 +7,7 @@ from app.core.database import get_database
 from app.core.security import get_current_user, require_roles
 from app.core.audit import record_audit_log
 from app.models.feedback import FeedbackCreate, FeedbackResponse
+from app.core.tenancy import institution_id_for, scoped_filter
 
 router = APIRouter(prefix="/feedback", tags=["Feedback & Ratings"])
 
@@ -31,7 +32,7 @@ async def submit_feedback(
         raise HTTPException(status_code=400, detail="Feedback can only be submitted after ticket resolution.")
 
     # Prevent duplicate feedback
-    existing = await db.feedback.find_one({"ticket_id": ticket["ticket_id"]})
+    existing = await db.feedback.find_one({"ticket_id": ticket["ticket_id"], "institution_id": institution_id_for(current_user)})
     if existing:
         raise HTTPException(status_code=400, detail="Feedback has already been submitted for this ticket.")
 
@@ -39,7 +40,7 @@ async def submit_feedback(
     now_iso = datetime.now(timezone.utc).isoformat()
 
     doc = {
-        "_id": feedback_id,
+        "_id": feedback_id,\n        "institution_id": institution_id_for(current_user),
         "ticket_id": ticket["ticket_id"],
         "ticket_custom_id": ticket["ticket_id"],
         "ticket_db_id": str(ticket["_id"]),
@@ -58,7 +59,7 @@ async def submit_feedback(
         await db.feedback.insert_one(doc)
     except DuplicateKeyError:
         raise HTTPException(status_code=409, detail="Feedback has already been submitted for this ticket.") from None
-    await db.tickets.update_one({"_id": ticket["_id"]}, {"$set": {"has_feedback": True}})
+    await db.tickets.update_one({"_id": ticket["_id"], "institution_id": institution_id_for(current_user)}, {"$set": {"has_feedback": True}})
 
     await record_audit_log(
         action="FEEDBACK_SUBMITTED",
@@ -99,7 +100,7 @@ async def get_feedback_metrics(current_user: dict = Depends(require_roles("admin
         if rating in distribution:
             distribution[rating] = row.get("count", 0)
 
-    recent_docs = await db.feedback.find().sort("created_at", -1).limit(10).to_list(10)
+    recent_docs = await db.feedback.find({"institution_id": institution_id_for(current_user)}).sort("created_at", -1).limit(10).to_list(10)
     recent = [
         {
             "id": str(item["_id"]),
