@@ -153,6 +153,11 @@ async def accept_institution_admin_invitation(payload: InstitutionAdminInviteAcc
         raise HTTPException(status_code=403, detail="This invitation no longer matches an approved institution email domain.")
     if await db.users.find_one({"email": invite["email"]}):
         raise HTTPException(status_code=409, detail="An account with this email already exists.")
+    if await db.pending_registrations.find_one({"email": invite["email"]}):
+        raise HTTPException(
+            status_code=409,
+            detail="This email has a pending student/faculty verification. Complete or let that registration expire before accepting an administrator invitation.",
+        )
 
     user_id = f"USR-{uuid.uuid4().hex[:10].upper()}"
     user = {
@@ -179,7 +184,7 @@ async def accept_institution_admin_invitation(payload: InstitutionAdminInviteAcc
         raise HTTPException(status_code=409, detail="An account with this email already exists.") from None
 
     consumed = await db.admin_invitations.update_one(
-        {"_id": invite["_id"], "used_at": None, "expires_at": {"$gt": now}},
+        {"_id": invite["_id"], "used_at": None, "revoked_at": None, "expires_at": {"$gt": now}},
         {"$set": {"used_at": now, "accepted_by": user_id}},
     )
     if consumed.modified_count != 1:
