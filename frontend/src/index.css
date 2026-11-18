@@ -632,3 +632,11 @@ tbody tr:hover {
   font-weight: 600;
   letter-spacing: 0.01em;
 }
+
+
+/* Keep campus maintenance actions visible at all viewport widths. */
+.campus-tree-title { flex-wrap: wrap; }
+.campus-tree button.btn-secondary { display: inline-flex !important; align-items: center; justify-content: center; gap: .3rem; flex: 0 0 auto; min-height: 30px; padding: .3rem .5rem; white-space: nowrap; visibility: visible; opacity: 1; }
+.campus-tree-floor > div { flex-wrap: wrap; }
+.campus-tree-floor li { line-height: 1.8; }
+.campus-tree-floor li button.btn-secondary { margin-left: .25rem; }
