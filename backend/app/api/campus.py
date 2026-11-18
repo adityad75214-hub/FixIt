@@ -448,13 +448,13 @@ async def deactivate_campus_structure(entity: str, record_id: str, current_user:
     elif entity == "rooms":
         building = await db.buildings.find_one(scoped_filter(current_user, {"_id": current.get("building_id")}))
         floor = await db.floors.find_one(scoped_filter(current_user, {"_id": current.get("floor_id")}))
+        room_matches = [{"room": _ticket_text_match(current["room_number"])}]
+        if current.get("room_name"):
+            room_matches.append({"room": _ticket_text_match(current["room_name"])})
         ticket_query = {
             "building": _ticket_text_match((building or {}).get("name", "")),
             "floor": _ticket_text_match((floor or {}).get("floor_name", "")),
-            "$or": [
-                {"room": _ticket_text_match(current.get("room_number", ""))},
-                {"room": _ticket_text_match(current.get("room_name", ""))},
-            ],
+            "$or": room_matches,
         }
         if building and building.get("campus_id"):
             ticket_query["campus_id"] = building["campus_id"]
