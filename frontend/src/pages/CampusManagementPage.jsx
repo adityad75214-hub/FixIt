@@ -115,12 +115,18 @@ export default function CampusManagementPage() {
   };
 
 
+  const EDIT_FIELDS = {
+    campuses: ['name', 'code'],
+    buildings: ['name', 'code', 'total_floors'],
+    blocks: ['name', 'code'],
+    floors: ['floor_name', 'floor_number'],
+    rooms: ['room_number', 'room_name', 'department'],
+    locations: ['name', 'code', 'category', 'description'],
+  };
   const beginEdit = (entity, record) => {
-    setEditing({ entity, id: record.id });
-    setEditValues(Object.fromEntries(Object.entries(record).filter(([key, value]) =>
-      !['id', '_id', 'is_active', 'rooms', 'locations', 'blocks', 'floors'].includes(key) &&
-      (typeof value === 'string' || typeof value === 'number' || value === null)
-    ).map(([key, value]) => [key, value ?? ''])));
+    const fields = EDIT_FIELDS[entity] || [];
+    setEditing({ entity, id: record.id, label: entity.slice(0, -1) });
+    setEditValues(Object.fromEntries(fields.map(key => [key, record[key] ?? ''])));
     setError(''); setSuccess('');
   };
   const saveEdit = async (event) => {
@@ -129,7 +135,9 @@ export default function CampusManagementPage() {
     setSaving(true); setError(''); setSuccess('');
     try {
       const payload = { ...editValues };
-      for (const key of ['total_floors', 'floor_number']) if (payload[key] !== undefined) payload[key] = Number(payload[key]);
+      for (const key of ['total_floors', 'floor_number']) {
+        if (payload[key] !== undefined) payload[key] = Number(payload[key]);
+      }
       await campusService.updateStructure(editing.entity, editing.id, payload);
       setEditing(null); setEditValues({});
       setSuccess('Campus structure updated successfully.');
