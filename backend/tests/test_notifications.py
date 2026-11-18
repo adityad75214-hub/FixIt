@@ -21,6 +21,8 @@ def _insert_notification(user_id, institution_id, *, is_read=False):
 
 
 def test_student_receives_only_own_tenant_notifications(client, student_token):
+    db_manager.db.sync_db.notifications.delete_many({"user_id": "USR-TEST-STUDENT"})
+    db_manager.db.sync_db.notifications.delete_many({"user_id": "USR-OTHER-STUDENT"})
     own_id = _insert_notification("USR-TEST-STUDENT", "INST-DEFAULT")
     _insert_notification("USR-OTHER-STUDENT", "INST-DEFAULT")
     _insert_notification("USR-TEST-STUDENT", "INST-OTHER")
@@ -38,6 +40,8 @@ def test_student_receives_only_own_tenant_notifications(client, student_token):
 
 
 def test_student_can_mark_only_own_notification_read(client, student_token):
+    db_manager.db.sync_db.notifications.delete_many({"user_id": "USR-TEST-STUDENT"})
+    db_manager.db.sync_db.notifications.delete_many({"user_id": "USR-OTHER-STUDENT"})
     own_id = _insert_notification("USR-TEST-STUDENT", "INST-DEFAULT")
     other_id = _insert_notification("USR-OTHER-STUDENT", "INST-DEFAULT")
 
@@ -53,6 +57,8 @@ def test_student_can_mark_only_own_notification_read(client, student_token):
 
 
 def test_mark_all_read_is_scoped_to_current_user_and_tenant(client, student_token):
+    db_manager.db.sync_db.notifications.delete_many({"user_id": "USR-TEST-STUDENT"})
+    db_manager.db.sync_db.notifications.delete_many({"user_id": "USR-OTHER-STUDENT"})
     own_id = _insert_notification("USR-TEST-STUDENT", "INST-DEFAULT")
     other_user_id = _insert_notification("USR-OTHER-STUDENT", "INST-DEFAULT")
     other_tenant_id = _insert_notification("USR-TEST-STUDENT", "INST-OTHER")
