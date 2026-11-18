@@ -15,6 +15,7 @@ def test_password_reset_request_sends_link_and_stores_only_token_hash(
     client, monkeypatch
 ):
     sent = {}
+    _sync_db().password_reset_tokens.delete_many({"user_id": "USR-TEST-STUDENT"})
     monkeypatch.setattr(settings, "APP_BASE_URL", "https://fixit.example")
     monkeypatch.setattr(
         notification_service,
@@ -45,6 +46,7 @@ def test_password_reset_request_sends_link_and_stores_only_token_hash(
 
 
 def test_password_reset_email_failure_removes_unused_token(client, monkeypatch):
+    _sync_db().password_reset_tokens.delete_many({"user_id": "USR-TEST-STUDENT"})
     monkeypatch.setattr(settings, "APP_BASE_URL", "https://fixit.example")
 
     def fail_email(*args, **kwargs):
@@ -64,6 +66,8 @@ def test_password_reset_email_failure_removes_unused_token(client, monkeypatch):
 
 
 def test_password_reset_token_is_single_use_and_revokes_sessions(client):
+    _sync_db().password_reset_tokens.delete_many({"user_id": "USR-TEST-STUDENT"})
+    _sync_db().refresh_tokens.delete_many({"user_id": "USR-TEST-STUDENT"})
     raw_token = "test-reset-token-" + ("x" * 40)
     token_hash = hash_token(raw_token)
     now = datetime.now(timezone.utc)
@@ -101,3 +105,24 @@ def test_password_reset_token_is_single_use_and_revokes_sessions(client):
         json={"token": raw_token, "new_password": "AnotherSecurePassword@123"},
     )
     assert replay.status_code == 400
+
+
+def test_password_reset_rejects_expired_token(client):
+    _sync_db().password_reset_tokens.delete_many({"user_id": "USR-TEST-STUDENT"})
+    raw_token = "expired-reset-token-" + ("y" * 40)
+    token_hash = hash_token(raw_token)
+    now = datetime.now(timezone.utc)
+    _sync_db().password_reset_tokens.insert_one({
+        "_id": token_hash,
+        "user_id": "USR-TEST-STUDENT",
+        "created_at": now - timedelta(hours=1),
+        "expires_at": now - timedelta(seconds=1),
+    })
+
+    response = client.post(
+        "/api/auth/password-reset/confirm",
+        json={"token": raw_token, "new_password": "NewSecurePassword@123"},
+    )
+
+    assert response.status_code == 400
+    assert _sync_db().password_reset_tokens.find_one({"_id": token_hash}) is None
