@@ -125,7 +125,7 @@ export default function CampusManagementPage() {
   };
   const beginEdit = (entity, record) => {
     const fields = EDIT_FIELDS[entity] || [];
-    setEditing({ entity, id: record.id, label: entity.slice(0, -1) });
+    setEditing({ entity, id: record.id, label: entity });
     setEditValues(Object.fromEntries(fields.map(key => [key, record[key] ?? ''])));
     setError(''); setSuccess('');
   };
