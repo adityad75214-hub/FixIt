@@ -1,4 +1,5 @@
 import asyncio
+import logging
 import secrets
 import hmac
 import uuid
@@ -14,6 +15,8 @@ from app.core.security import get_password_hash, create_access_token, create_ref
 from app.core.audit import record_audit_log
 from app.models.user import Token, UserResponse
 from app.api.auth import enforce_trusted_origin, set_refresh_cookie
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/auth/registration", tags=["College Email Registration"])
 
@@ -139,8 +142,12 @@ async def request_registration_code(payload: RegistrationRequest, request: Reque
     try:
         await asyncio.to_thread(_send_email, email, f"Verify your college email — {institution['name']}", body)
     except Exception:
+        logger.exception("FixIt registration verification email delivery failed")
         await db.pending_registrations.delete_one({"_id": pending_id})
-        raise HTTPException(status_code=502, detail="We could not send the verification email. Check the address or try again later.") from None
+        raise HTTPException(
+            status_code=502,
+            detail="We could not send the verification email. Check the address or try again later."
+        ) from None
 
     return {"message": "Verification code sent to your college email.", "email": email, "expires_in_minutes": CODE_TTL_MINUTES}
 
