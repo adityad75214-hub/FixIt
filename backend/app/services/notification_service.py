@@ -42,15 +42,8 @@ def _send_email(recipient: str, subject: str, body: str) -> None:
     message.set_content(body)
 
     timeout = 15
-    if settings.SMTP_STARTTLS:
-        with smtplib.SMTP(host, settings.SMTP_PORT, timeout=timeout) as server:
-            server.ehlo()
-            server.starttls(context=ssl.create_default_context())
-            server.ehlo()
-            if username:
-                server.login(username, password)
-            server.send_message(message)
-    elif settings.SMTP_PORT == 465:
+    if settings.SMTP_PORT == 465:
+        # Port 465 uses implicit TLS; do not attempt STARTTLS on this port.
         with smtplib.SMTP_SSL(
             host,
             settings.SMTP_PORT,
@@ -60,11 +53,19 @@ def _send_email(recipient: str, subject: str, body: str) -> None:
             if username:
                 server.login(username, password)
             server.send_message(message)
-    else:
+    elif settings.SMTP_STARTTLS:
         with smtplib.SMTP(host, settings.SMTP_PORT, timeout=timeout) as server:
+            server.ehlo()
+            server.starttls(context=ssl.create_default_context())
             server.ehlo()
             if username:
                 server.login(username, password)
+            server.send_message(message)
+    else:
+        if username:
+            raise RuntimeError("SMTP authentication requires TLS; enable STARTTLS or use port 465")
+        with smtplib.SMTP(host, settings.SMTP_PORT, timeout=timeout) as server:
+            server.ehlo()
             server.send_message(message)
 
 
