@@ -89,6 +89,8 @@ export const campusService = {
   createBlock: (data) => api.post('/campus/blocks', data),
   getLocations: (params) => api.get('/campus/locations', { params }),
   createLocation: (data) => api.post('/campus/locations', data),
+  updateStructure: (entity, id, data) => api.put(`/campus/${entity}/${id}`, data),
+  deactivateStructure: (entity, id) => api.delete(`/campus/${entity}/${id}`),
 };
 
 export const slaService = {
