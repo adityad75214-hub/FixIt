@@ -358,3 +358,72 @@ def test_suspended_institution_members_are_denied_api_access(client):
     token = create_access_token({"sub": user_id, "role": "student", "ver": 0})
     response = client.get("/api/campus", headers={"Authorization": f"Bearer {token}"})
     assert response.status_code == 403
+
+
+
+def test_campus_structure_edit_is_safe_and_ticket_locations_cannot_be_deactivated(client, admin_token, student_token):
+    import uuid
+
+    admin_headers = {"Authorization": f"Bearer {admin_token}"}
+    student_headers = {"Authorization": f"Bearer {student_token}"}
+    suffix = uuid.uuid4().hex[:7].upper()
+
+    campus = client.post("/api/campus", headers=admin_headers, json={
+        "name": f"Edit Campus {suffix}", "code": f"EC{suffix}"
+    })
+    assert campus.status_code == 201, campus.text
+    campus_id = campus.json()["id"]
+
+    building = client.post("/api/campus/buildings", headers=admin_headers, json={
+        "campus_id": campus_id, "name": f"Edit Building {suffix}",
+        "code": f"EB{suffix}", "total_floors": 1
+    })
+    assert building.status_code == 201, building.text
+    building_id = building.json()["id"]
+
+    floor = client.post("/api/campus/floors", headers=admin_headers, json={
+        "building_id": building_id, "floor_number": 0, "floor_name": f"Ground {suffix}"
+    })
+    assert floor.status_code == 201, floor.text
+    floor_id = floor.json()["id"]
+
+    room = client.post("/api/campus/rooms", headers=admin_headers, json={
+        "building_id": building_id, "floor_id": floor_id,
+        "room_number": f"R{suffix}", "room_name": "Test Lab"
+    })
+    assert room.status_code == 201, room.text
+    room_id = room.json()["id"]
+
+    edited = client.put(f"/api/campus/rooms/{room_id}", headers=admin_headers, json={
+        "room_number": f"R2{suffix}", "room_name": "Updated Test Lab"
+    })
+    assert edited.status_code == 200, edited.text
+    assert edited.json()["room_number"] == f"R2{suffix}"
+
+    # Parent references cannot be changed through the details editor.
+    moved = client.put(f"/api/campus/rooms/{room_id}", headers=admin_headers, json={
+        "building_id": "BLD-OTHER"
+    })
+    assert moved.status_code == 400, moved.text
+
+    ticket = client.post("/api/tickets?auto_assign=false", headers=student_headers, json={
+        "title": "Test lab projector has stopped working",
+        "description": "The projector in this test lab no longer powers on.",
+        "problem_domain": "facilities",
+        "category": "Campus Facilities and Maintenance",
+        "campus_id": campus_id,
+        "building": f"Edit Building {suffix}",
+        "floor": f"Ground {suffix}",
+        "room": f"R2{suffix}"
+    })
+    assert ticket.status_code == 201, ticket.text
+
+    blocked = client.delete(f"/api/campus/rooms/{room_id}", headers=admin_headers)
+    assert blocked.status_code == 409, blocked.text
+    assert "ticket" in blocked.json()["detail"].lower()
+
+    # Tenant isolation and role authorization still apply to maintenance APIs.
+    student_edit = client.put(f"/api/campus/rooms/{room_id}", headers=student_headers, json={
+        "room_name": "Unauthorized"
+    })
+    assert student_edit.status_code == 403
