@@ -2,6 +2,7 @@ import uuid
 import re
 import secrets
 import asyncio
+import logging
 from datetime import datetime, timedelta, timezone
 from pymongo import ReturnDocument
 from pymongo.errors import DuplicateKeyError
@@ -19,6 +20,8 @@ from app.core.security import (
 )
 from app.core.audit import record_audit_log
 from app.models.user import UserCreate, UserLogin, UserResponse, Token, PasswordChange, UserUpdate, UserPreferences
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
@@ -563,6 +566,7 @@ async def request_password_reset(payload: PasswordResetRequest, request: Request
         await asyncio.to_thread(_send_email, email, "Reset your FixIt password", body)
     except Exception:
         await db.password_reset_tokens.delete_one({"_id": token_hash})
+        logger.exception("FixIt password-reset email delivery failed")
         return generic
     return generic
 
