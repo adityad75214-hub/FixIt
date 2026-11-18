@@ -128,3 +128,58 @@ def test_incorrect_registration_code_does_not_create_user(client, monkeypatch):
     verified = client.post("/api/auth/registration/verify-code", json={"email": email, "code": "000000", "password": "SecurePassphrase123!"})
     assert verified.status_code == 400
     assert db_manager.db.sync_db.users.find_one({"email": email}) is None
+
+
+def test_student_registration_rejects_email_with_pending_admin_invitation(client, monkeypatch):
+    from datetime import datetime, timedelta, timezone
+
+    monkeypatch.setattr(settings, "PUBLIC_REGISTRATION_ENABLED", True)
+    monkeypatch.setattr(settings, "SMTP_HOST", "smtp.test")
+    monkeypatch.setattr(settings, "SMTP_FROM_EMAIL", "noreply@fixit.test")
+    monkeypatch.setattr(settings, "APP_BASE_URL", "https://fixit.test")
+    institution_id, slug = _institution()
+    email = f"admin-pending-{uuid.uuid4().hex[:8]}@otp-test.edu"
+    db_manager.db.sync_db.admin_invitations.insert_one({
+        "_id": f"INV-{uuid.uuid4().hex[:10].upper()}",
+        "email": email,
+        "institution_id": institution_id,
+        "used_at": None,
+        "revoked_at": None,
+        "expires_at": datetime.now(timezone.utc) + timedelta(hours=24),
+    })
+    response = client.post("/api/auth/registration/request-code", json={
+        "institution_slug": slug,
+        "name": "Pending Admin",
+        "email": email,
+        "role": "student",
+        "department": "Computer Science",
+        "identifier": f"USN-{uuid.uuid4().hex[:8]}",
+    })
+    assert response.status_code == 409
+    assert "administrator invitation" in response.json()["detail"].lower()
+
+
+def test_registration_email_failure_returns_502_and_cleans_pending_record(client, monkeypatch):
+    import app.services.notification_service as mailer
+
+    monkeypatch.setattr(settings, "PUBLIC_REGISTRATION_ENABLED", True)
+    monkeypatch.setattr(settings, "SMTP_HOST", "smtp.test")
+    monkeypatch.setattr(settings, "SMTP_FROM_EMAIL", "noreply@fixit.test")
+    monkeypatch.setattr(settings, "APP_BASE_URL", "https://fixit.test")
+    _, slug = _institution()
+    email = f"mail-fail-{uuid.uuid4().hex[:8]}@otp-test.edu"
+
+    def fail_send(*args):
+        raise RuntimeError("simulated SMTP failure")
+
+    monkeypatch.setattr(mailer, "_send_email", fail_send)
+    response = client.post("/api/auth/registration/request-code", json={
+        "institution_slug": slug,
+        "name": "Mail Failure Student",
+        "email": email,
+        "role": "student",
+        "department": "Computer Science",
+        "identifier": f"USN-{uuid.uuid4().hex[:8]}",
+    })
+    assert response.status_code == 502
+    assert db_manager.db.sync_db.pending_registrations.find_one({"email": email}) is None
