@@ -61,7 +61,7 @@ async def _send_admin_invitation(db, institution: dict, request_doc: dict, actor
     email = request_doc["email"].strip().lower()
     if await db.users.find_one({"email": email}):
         raise HTTPException(status_code=409, detail="An account with this email already exists.")
-    if await db.pending_registrations.find_one({"email": email}):
+    if await db.pending_registrations.find_one({"email": email, "expires_at": {"$gt": datetime.now(timezone.utc)}}):
         raise HTTPException(status_code=409, detail="This email has a pending student/faculty verification. Finish or let that registration expire before inviting it as an administrator.")
     existing = await db.admin_invitations.find_one({
         "email": email, "institution_id": str(institution["_id"]), "used_at": None, "revoked_at": None,
@@ -249,9 +249,9 @@ async def resend_admin_invitation(
         raise HTTPException(status_code=409, detail="Invitation changed while it was being resent. Refresh and try again.")
     invite_url = settings.APP_BASE_URL.rstrip("/") + "/accept-invitation?token=" + raw_token
     body = (
-        f"Hello {invite.get('name', 'there')},\\n\\nYour FixIt administrator invitation for {institution['name']} has been resent. "
-        "The previous link is no longer valid. This single-use link expires in 48 hours.\\n\\n"
-        f"Accept your invitation: {invite_url}\\n\\nIf you were not expecting this invitation, ignore this email."
+        f"Hello {invite.get('name', 'there')},\n\nYour FixIt administrator invitation for {institution['name']} has been resent. "
+        "The previous link is no longer valid. This single-use link expires in 48 hours.\n\n"
+        f"Accept your invitation: {invite_url}\n\nIf you were not expecting this invitation, ignore this email."
     )
     try:
         from app.services.notification_service import _send_email
