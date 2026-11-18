@@ -62,11 +62,7 @@ def _send_email(recipient: str, subject: str, body: str) -> None:
                 server.login(username, password)
             server.send_message(message)
     else:
-        if username:
-            raise RuntimeError("SMTP authentication requires TLS; enable STARTTLS or use port 465")
-        with smtplib.SMTP(host, settings.SMTP_PORT, timeout=timeout) as server:
-            server.ehlo()
-            server.send_message(message)
+        raise RuntimeError("SMTP transport must use STARTTLS or implicit TLS on port 465")
 
 
 async def send_notification(
