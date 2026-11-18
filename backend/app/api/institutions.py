@@ -89,14 +89,17 @@ async def invite_institution_admin(institution_id: str, payload: InstitutionAdmi
         raise HTTPException(status_code=400, detail="The administrator email must use an approved institution domain.")
     if await db.users.find_one({"email": email}):
         raise HTTPException(status_code=409, detail="An account with this email already exists.")
-    if await db.admin_invitations.find_one({"email": email, "institution_id": institution_id, "used_at": None, "expires_at": {"$gt": datetime.now(timezone.utc)}}):
+    pending_registration = await db.pending_registrations.find_one({"email": email})
+    if pending_registration:
+        raise HTTPException(status_code=409, detail="This email has a pending student/faculty verification. Finish or let that registration expire before inviting it as an administrator.")
+    if await db.admin_invitations.find_one({"email": email, "institution_id": institution_id, "used_at": None, "revoked_at": None, "expires_at": {"$gt": datetime.now(timezone.utc)}}):
         raise HTTPException(status_code=409, detail="A valid invitation already exists for this email.")
 
     raw_token = __import__("secrets").token_urlsafe(48)
     now = datetime.now(timezone.utc)
     invitation_id = f"INV-{uuid.uuid4().hex[:12].upper()}"
     active_admin_count = await db.users.count_documents({"institution_id": institution_id, "role": "admin", "$or": [{"is_active": True}, {"is_active": {"$exists": False}}]})
-    pending_primary = await db.admin_invitations.find_one({"institution_id": institution_id, "admin_level": "primary", "used_at": None, "expires_at": {"$gt": now}})
+    pending_primary = await db.admin_invitations.find_one({"institution_id": institution_id, "admin_level": "primary", "used_at": None, "revoked_at": None, "expires_at": {"$gt": now}})
     invited_admin_level = "primary" if current_user.get("role") == "platform_admin" and active_admin_count == 0 and pending_primary is None else "college"
     invite = {
         "_id": invitation_id,
@@ -112,6 +115,7 @@ async def invite_institution_admin(institution_id: str, payload: InstitutionAdmi
         "expires_at": now + timedelta(hours=48),
         "created_by": current_user["id"],
         "used_at": None,
+        "revoked_at": None,
     }
     await db.admin_invitations.insert_one(invite)
     invite_url = settings.APP_BASE_URL.rstrip("/") + "/accept-invitation?token=" + raw_token
@@ -136,7 +140,7 @@ async def accept_institution_admin_invitation(payload: InstitutionAdminInviteAcc
     """Accept a single-use invitation and set the administrator's own password."""
     db = get_database()
     now = datetime.now(timezone.utc)
-    invite = await db.admin_invitations.find_one({"token_hash": hash_token(payload.token), "used_at": None, "expires_at": {"$gt": now}})
+    invite = await db.admin_invitations.find_one({"token_hash": hash_token(payload.token), "used_at": None, "revoked_at": None, "expires_at": {"$gt": now}})
     if not invite:
         raise HTTPException(status_code=400, detail="This invitation is invalid, expired, or already used.")
     institution = await db.institutions.find_one({"_id": invite["institution_id"], "status": "active"})
@@ -149,6 +153,11 @@ async def accept_institution_admin_invitation(payload: InstitutionAdminInviteAcc
         raise HTTPException(status_code=403, detail="This invitation no longer matches an approved institution email domain.")
     if await db.users.find_one({"email": invite["email"]}):
         raise HTTPException(status_code=409, detail="An account with this email already exists.")
+    if await db.pending_registrations.find_one({"email": invite["email"], "expires_at": {"$gt": now}}):
+        raise HTTPException(
+            status_code=409,
+            detail="This email has a pending student/faculty verification. Complete or let that registration expire before accepting an administrator invitation.",
+        )
 
     user_id = f"USR-{uuid.uuid4().hex[:10].upper()}"
     user = {
@@ -175,7 +184,7 @@ async def accept_institution_admin_invitation(payload: InstitutionAdminInviteAcc
         raise HTTPException(status_code=409, detail="An account with this email already exists.") from None
 
     consumed = await db.admin_invitations.update_one(
-        {"_id": invite["_id"], "used_at": None, "expires_at": {"$gt": now}},
+        {"_id": invite["_id"], "used_at": None, "revoked_at": None, "expires_at": {"$gt": now}},
         {"$set": {"used_at": now, "accepted_by": user_id}},
     )
     if consumed.modified_count != 1:

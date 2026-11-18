@@ -1,4 +1,5 @@
 import asyncio
+import logging
 import secrets
 import uuid
 from datetime import datetime, timedelta, timezone
@@ -11,6 +12,8 @@ from app.core.audit import record_audit_log
 from app.core.config import settings
 from app.core.database import get_database
 from app.core.security import get_current_user, hash_token, require_roles
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/institutions", tags=["Institution Administrator Governance"])
 
@@ -58,8 +61,10 @@ async def _send_admin_invitation(db, institution: dict, request_doc: dict, actor
     email = request_doc["email"].strip().lower()
     if await db.users.find_one({"email": email}):
         raise HTTPException(status_code=409, detail="An account with this email already exists.")
+    if await db.pending_registrations.find_one({"email": email, "expires_at": {"$gt": datetime.now(timezone.utc)}}):
+        raise HTTPException(status_code=409, detail="This email has a pending student/faculty verification. Finish or let that registration expire before inviting it as an administrator.")
     existing = await db.admin_invitations.find_one({
-        "email": email, "institution_id": str(institution["_id"]), "used_at": None,
+        "email": email, "institution_id": str(institution["_id"]), "used_at": None, "revoked_at": None,
         "expires_at": {"$gt": datetime.now(timezone.utc)}
     })
     if existing:
@@ -75,7 +80,7 @@ async def _send_admin_invitation(db, institution: dict, request_doc: dict, actor
         "designation": request_doc.get("designation"),
         "institution_id": str(institution["_id"]), "token_hash": hash_token(raw_token),
         "created_at": now, "expires_at": now + timedelta(hours=48),
-        "created_by": actor["id"], "used_at": None,
+        "created_by": actor["id"], "used_at": None, "revoked_at": None,
     }
     await db.admin_invitations.insert_one(invitation)
     invite_url = settings.APP_BASE_URL.rstrip("/") + "/accept-invitation?token=" + raw_token
@@ -158,6 +163,112 @@ async def request_additional_administrator(
         details={"institution_id": institution_id, "email": email},
     )
     return {"message": "Administrator request submitted for Primary Admin approval.", "request_id": request_id}
+
+
+
+
+
+@router.get("/{institution_id}/admin-invitations")
+async def list_pending_admin_invitations(
+    institution_id: str,
+    current_user: dict = Depends(require_roles("platform_admin", "admin")),
+):
+    await _assert_primary(current_user, institution_id)
+    db = get_database()
+    await _institution_or_404(db, institution_id)
+    now = datetime.now(timezone.utc)
+    rows = await db.admin_invitations.find({
+        "institution_id": institution_id,
+        "used_at": None,
+        "revoked_at": None,
+        "expires_at": {"$gt": now},
+    }).sort("created_at", -1).to_list(None)
+    return [{
+        "id": row["_id"], "name": row.get("name", ""), "email": row.get("email", ""),
+        "admin_level": row.get("admin_level", "college"),
+        "created_at": row.get("created_at"), "expires_at": row.get("expires_at"),
+    } for row in rows]
+
+
+@router.delete("/{institution_id}/admin-invitations/{invitation_id}")
+async def cancel_admin_invitation(
+    institution_id: str,
+    invitation_id: str,
+    current_user: dict = Depends(require_roles("platform_admin", "admin")),
+):
+    await _assert_primary(current_user, institution_id)
+    db = get_database()
+    await _institution_or_404(db, institution_id)
+    now = datetime.now(timezone.utc)
+    result = await db.admin_invitations.update_one({
+        "_id": invitation_id, "institution_id": institution_id,
+        "used_at": None, "revoked_at": None, "expires_at": {"$gt": now},
+    }, {"$set": {"revoked_at": now, "revoked_by": current_user["id"]}})
+    if result.modified_count != 1:
+        raise HTTPException(status_code=404, detail="Pending invitation not found or already used.")
+    await record_audit_log(
+        action="INSTITUTION_ADMIN_INVITATION_CANCELLED", resource_type="admin_invitation",
+        resource_id=invitation_id, actor=current_user,
+        details={"institution_id": institution_id},
+    )
+    return {"message": "Administrator invitation cancelled."}
+
+
+@router.post("/{institution_id}/admin-invitations/{invitation_id}/resend")
+async def resend_admin_invitation(
+    institution_id: str,
+    invitation_id: str,
+    current_user: dict = Depends(require_roles("platform_admin", "admin")),
+):
+    await _assert_primary(current_user, institution_id)
+    db = get_database()
+    institution = await _institution_or_404(db, institution_id)
+    if not settings.SMTP_HOST or not settings.APP_BASE_URL or not (settings.SMTP_FROM_EMAIL or settings.SMTP_USERNAME):
+        raise HTTPException(status_code=503, detail="Administrator invitations require SMTP configuration.")
+    now = datetime.now(timezone.utc)
+    invite = await db.admin_invitations.find_one({
+        "_id": invitation_id, "institution_id": institution_id,
+        "used_at": None, "revoked_at": None, "expires_at": {"$gt": now},
+    })
+    if not invite:
+        raise HTTPException(status_code=404, detail="Pending invitation not found or expired.")
+    if await db.users.find_one({"email": invite["email"]}):
+        raise HTTPException(status_code=409, detail="An account with this email already exists.")
+    _check_domain(invite["email"], institution)
+    raw_token = secrets.token_urlsafe(48)
+    new_expiry = now + timedelta(hours=48)
+    # Replace the token before sending: the previous link is immediately invalidated.
+    updated = await db.admin_invitations.update_one({
+        "_id": invitation_id, "institution_id": institution_id,
+        "used_at": None, "revoked_at": None, "token_hash": invite["token_hash"],
+    }, {"$set": {
+        "token_hash": hash_token(raw_token), "expires_at": new_expiry,
+        "last_resent_at": now, "last_resent_by": current_user["id"],
+    }})
+    if updated.modified_count != 1:
+        raise HTTPException(status_code=409, detail="Invitation changed while it was being resent. Refresh and try again.")
+    invite_url = settings.APP_BASE_URL.rstrip("/") + "/accept-invitation?token=" + raw_token
+    body = (
+        f"Hello {invite.get('name', 'there')},\n\nYour FixIt administrator invitation for {institution['name']} has been resent. "
+        "The previous link is no longer valid. This single-use link expires in 48 hours.\n\n"
+        f"Accept your invitation: {invite_url}\n\nIf you were not expecting this invitation, ignore this email."
+    )
+    try:
+        from app.services.notification_service import _send_email
+        await asyncio.to_thread(_send_email, invite["email"], f"FixIt administrator invitation — {institution['name']}", body)
+    except Exception:
+        logger.exception("FixIt administrator invitation resend failed")
+        await db.admin_invitations.update_one(
+            {"_id": invitation_id, "token_hash": hash_token(raw_token), "used_at": None},
+            {"$set": {"revoked_at": datetime.now(timezone.utc), "revoked_by": current_user["id"]}},
+        )
+        raise HTTPException(status_code=502, detail="The new invitation email could not be sent. The previous link is invalid; create a new invitation.") from None
+    await record_audit_log(
+        action="INSTITUTION_ADMIN_INVITATION_RESENT", resource_type="admin_invitation",
+        resource_id=invitation_id, actor=current_user,
+        details={"institution_id": institution_id, "email": invite["email"]},
+    )
+    return {"message": "A new administrator invitation email was sent. The previous link is no longer valid.", "expires_in_hours": 48}
 
 
 @router.get("/{institution_id}/admin-requests")
