@@ -79,6 +79,20 @@ async def request_registration_code(payload: RegistrationRequest, request: Reque
     if await db.users.find_one({"email": email}):
         raise HTTPException(status_code=409, detail="An account with this email already exists. Please sign in instead.")
 
+    # Keep student/faculty OTP registration separate from administrator invitations.
+    # One mailbox must not have two simultaneous onboarding flows or roles.
+    pending_admin_invitation = await db.admin_invitations.find_one({
+        "email": email,
+        "used_at": None,
+        "revoked_at": None,
+        "expires_at": {"$gt": datetime.now(timezone.utc)},
+    })
+    if pending_admin_invitation:
+        raise HTTPException(
+            status_code=409,
+            detail="This email has a pending administrator invitation. Accept or cancel that invitation before starting student/faculty registration.",
+        )
+
     identifier_query = {
         "institution_id": str(institution["_id"]),
         "role": payload.role,
