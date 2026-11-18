@@ -306,3 +306,176 @@ async def create_custom_location(location_in: LocationCreate, current_user: dict
         raise HTTPException(status_code=409, detail="A location with this code may already exist.") from None
     await record_audit_log(action="LOCATION_CREATED", resource_type="campus_location", resource_id=location_id, actor=current_user, details={"name": location_in.name, "category": location_in.category, "campus_id": location_in.campus_id})
     return LocationResponse(id=location_id, **location_in.model_dump())
+
+
+# Administrative maintenance endpoints. Records are deactivated, never physically
+# removed, so historical ticket references and audit trails remain intact.
+from datetime import datetime, timezone
+from fastapi import Body
+import re
+
+# Parent IDs are deliberately immutable through this endpoint. This prevents an
+# ordinary edit from silently moving existing hierarchy records between parents.
+_CAMPUS_ENTITIES = {
+    "campuses": ("campuses", {"name", "code"}),
+    "buildings": ("buildings", {"name", "code", "total_floors", "order"}),
+    "floors": ("floors", {"floor_number", "floor_name", "order"}),
+    "rooms": ("rooms", {"room_number", "room_name", "department", "order"}),
+    "blocks": ("blocks", {"name", "code", "order"}),
+    "locations": ("campus_locations", {"name", "code", "category", "description", "order"}),
+}
+
+async def _validate_campus_parent(db, user, entity, values):
+    if entity == "buildings":
+        parent = await db.campuses.find_one(scoped_filter(user, {"_id": values.get("campus_id"), "is_active": True}))
+        if not parent:
+            raise HTTPException(status_code=400, detail="Select an active campus.")
+    elif entity in ("floors", "rooms", "blocks"):
+        building = await db.buildings.find_one(scoped_filter(user, {"_id": values.get("building_id"), "is_active": True}))
+        if not building:
+            raise HTTPException(status_code=400, detail="Select an active building.")
+        if entity == "rooms":
+            floor = await db.floors.find_one(scoped_filter(user, {"_id": values.get("floor_id"), "building_id": values.get("building_id"), "is_active": True}))
+            if not floor:
+                raise HTTPException(status_code=400, detail="The selected floor does not belong to this building.")
+        if entity == "floors" and values.get("block_id"):
+            block = await db.blocks.find_one(scoped_filter(user, {"_id": values["block_id"], "building_id": values.get("building_id"), "is_active": True}))
+            if not block:
+                raise HTTPException(status_code=400, detail="The selected block does not belong to this building.")
+    elif entity == "locations":
+        campus = await db.campuses.find_one(scoped_filter(user, {"_id": values.get("campus_id"), "is_active": True}))
+        if not campus:
+            raise HTTPException(status_code=400, detail="Select an active campus.")
+        if values.get("building_id"):
+            building = await db.buildings.find_one(scoped_filter(user, {"_id": values["building_id"], "campus_id": values["campus_id"], "is_active": True}))
+            if not building:
+                raise HTTPException(status_code=400, detail="The building does not belong to the selected campus.")
+        if values.get("block_id"):
+            block = await db.blocks.find_one(scoped_filter(user, {"_id": values["block_id"], "building_id": values.get("building_id"), "is_active": True}))
+            if not block:
+                raise HTTPException(status_code=400, detail="The block does not belong to the selected building.")
+        if values.get("floor_id"):
+            floor = await db.floors.find_one(scoped_filter(user, {"_id": values["floor_id"], "building_id": values.get("building_id"), "is_active": True}))
+            if not floor:
+                raise HTTPException(status_code=400, detail="The floor does not belong to the selected building.")
+
+def _ticket_text_match(value: str) -> dict:
+    return {"$regex": f"^{re.escape(value.strip())}$", "$options": "i"}
+
+@router.put("/{entity}/{record_id}")
+async def update_campus_structure(entity: str, record_id: str, payload: dict = Body(...), current_user: dict = Depends(require_roles("admin"))):
+    if entity not in _CAMPUS_ENTITIES:
+        raise HTTPException(status_code=404, detail="Unknown campus structure type.")
+    collection_name, allowed = _CAMPUS_ENTITIES[entity]
+    unknown = set(payload) - allowed
+    if unknown:
+        raise HTTPException(status_code=400, detail="Parent links and system fields cannot be edited here. Change only the displayed details.")
+    values = dict(payload)
+    if not values:
+        raise HTTPException(status_code=400, detail="No editable fields were supplied.")
+    required_text = {
+        "name", "code", "floor_name", "room_number", "category"
+    }
+    for key, value in values.items():
+        if key in required_text:
+            if not isinstance(value, str) or not value.strip():
+                raise HTTPException(status_code=422, detail=f"{key} cannot be empty.")
+            values[key] = value.strip()
+    for key in ("total_floors", "floor_number", "order"):
+        if key in values:
+            try:
+                values[key] = int(values[key])
+            except (TypeError, ValueError):
+                raise HTTPException(status_code=422, detail=f"{key} must be a whole number.") from None
+    if "total_floors" in values and not 1 <= values["total_floors"] <= 100:
+        raise HTTPException(status_code=422, detail="Number of floors must be between 1 and 100.")
+    if "floor_number" in values and not -10 <= values["floor_number"] <= 200:
+        raise HTTPException(status_code=422, detail="Floor number must be between -10 and 200.")
+    db = get_database()
+    collection = getattr(db, collection_name)
+    current = await collection.find_one(scoped_filter(current_user, {"_id": record_id, "is_active": True}))
+    if not current:
+        raise HTTPException(status_code=404, detail="Active campus structure not found.")
+    merged = {**current, **values}
+    await _validate_campus_parent(db, current_user, entity, merged)
+    values["updated_at"] = datetime.now(timezone.utc).isoformat()
+    try:
+        result = await collection.update_one(scoped_filter(current_user, {"_id": record_id, "is_active": True}), {"$set": values})
+    except DuplicateKeyError:
+        raise HTTPException(status_code=409, detail="An active campus item with the same unique code or name already exists.") from None
+    if not result.matched_count:
+        raise HTTPException(status_code=409, detail="This record changed. Refresh and try again.")
+    await record_audit_log(action=f"{entity[:-1].upper()}_UPDATED", resource_type=entity[:-1], resource_id=record_id, actor=current_user, details={"changed_fields": sorted(values.keys())})
+    updated = await collection.find_one(scoped_filter(current_user, {"_id": record_id}))
+    return {key: value for key, value in updated.items() if key != "_id"} | {"id": record_id}
+
+@router.delete("/{entity}/{record_id}")
+async def deactivate_campus_structure(entity: str, record_id: str, current_user: dict = Depends(require_roles("admin"))):
+    if entity not in _CAMPUS_ENTITIES:
+        raise HTTPException(status_code=404, detail="Unknown campus structure type.")
+    collection_name, _ = _CAMPUS_ENTITIES[entity]
+    db = get_database()
+    collection = getattr(db, collection_name)
+    current = await collection.find_one(scoped_filter(current_user, {"_id": record_id, "is_active": True}))
+    if not current:
+        raise HTTPException(status_code=404, detail="Active campus structure not found.")
+
+    # Do not deactivate a parent while active child records still depend on it.
+    child_dependencies = {
+        "campuses": [("buildings", {"campus_id": record_id}), ("campus_locations", {"campus_id": record_id})],
+        "buildings": [("floors", {"building_id": record_id}), ("blocks", {"building_id": record_id}), ("rooms", {"building_id": record_id}), ("campus_locations", {"building_id": record_id})],
+        "floors": [("rooms", {"floor_id": record_id}), ("campus_locations", {"floor_id": record_id})],
+        "blocks": [("floors", {"block_id": record_id}), ("campus_locations", {"block_id": record_id})],
+    }
+    for dependency_collection, query in child_dependencies.get(entity, []):
+        count = await getattr(db, dependency_collection).count_documents(scoped_filter(current_user, {**query, "is_active": True}))
+        if count:
+            raise HTTPException(status_code=409, detail=f"Cannot deactivate this item because {count} active dependent {dependency_collection} record(s) exist. Deactivate or move them first.")
+
+    # Tickets store human-readable building/floor/room values (not room_id or
+    # location_id). Check those real fields so historical ticket locations remain valid.
+    ticket_query = None
+    if entity == "campuses":
+        ticket_query = {"campus_id": record_id}
+    elif entity == "buildings":
+        campus = await db.campuses.find_one(scoped_filter(current_user, {"_id": current.get("campus_id")}))
+        ticket_query = {"campus_id": current.get("campus_id"), "building": _ticket_text_match(current.get("name", ""))}
+    elif entity == "floors":
+        building = await db.buildings.find_one(scoped_filter(current_user, {"_id": current.get("building_id")}))
+        ticket_query = {"building": _ticket_text_match((building or {}).get("name", "")), "floor": _ticket_text_match(current.get("floor_name", ""))}
+        if building and building.get("campus_id"):
+            ticket_query["campus_id"] = building["campus_id"]
+    elif entity == "rooms":
+        building = await db.buildings.find_one(scoped_filter(current_user, {"_id": current.get("building_id")}))
+        floor = await db.floors.find_one(scoped_filter(current_user, {"_id": current.get("floor_id")}))
+        room_matches = [{"room": _ticket_text_match(current["room_number"])}]
+        if current.get("room_name"):
+            room_matches.append({"room": _ticket_text_match(current["room_name"])})
+        ticket_query = {
+            "building": _ticket_text_match((building or {}).get("name", "")),
+            "floor": _ticket_text_match((floor or {}).get("floor_name", "")),
+            "$or": room_matches,
+        }
+        if building and building.get("campus_id"):
+            ticket_query["campus_id"] = building["campus_id"]
+    elif entity == "locations":
+        building = await db.buildings.find_one(scoped_filter(current_user, {"_id": current.get("building_id")})) if current.get("building_id") else None
+        floor = await db.floors.find_one(scoped_filter(current_user, {"_id": current.get("floor_id")})) if current.get("floor_id") else None
+        ticket_query = {"campus_id": current.get("campus_id"), "room": _ticket_text_match(current.get("name", ""))}
+        if building:
+            ticket_query["building"] = _ticket_text_match(building.get("name", ""))
+        else:
+            ticket_query["building"] = {"$in": ["Campus-wide / Outdoor", "Campus grounds", "Outdoor"]}
+        if floor:
+            ticket_query["floor"] = _ticket_text_match(floor.get("floor_name", ""))
+    if ticket_query:
+        ticket_count = await db.tickets.count_documents(scoped_filter(current_user, ticket_query))
+        if ticket_count:
+            raise HTTPException(status_code=409, detail=f"Cannot deactivate this item because {ticket_count} ticket(s) reference its location. Keep it active to preserve ticket history.")
+
+    now = datetime.now(timezone.utc).isoformat()
+    result = await collection.update_one(scoped_filter(current_user, {"_id": record_id, "is_active": True}), {"$set": {"is_active": False, "deactivated_at": now, "updated_at": now}})
+    if not result.matched_count:
+        raise HTTPException(status_code=409, detail="This record changed. Refresh and try again.")
+    await record_audit_log(action=f"{entity[:-1].upper()}_DEACTIVATED", resource_type=entity[:-1], resource_id=record_id, actor=current_user, details={"name": current.get("name") or current.get("floor_name") or current.get("room_number")})
+    return {"message": "Campus structure deactivated. Historical records were preserved.", "id": record_id}
