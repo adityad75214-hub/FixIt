@@ -89,6 +89,9 @@ async def invite_institution_admin(institution_id: str, payload: InstitutionAdmi
         raise HTTPException(status_code=400, detail="The administrator email must use an approved institution domain.")
     if await db.users.find_one({"email": email}):
         raise HTTPException(status_code=409, detail="An account with this email already exists.")
+    pending_registration = await db.pending_registrations.find_one({"email": email})
+    if pending_registration:
+        raise HTTPException(status_code=409, detail="This email has a pending student/faculty verification. Finish or let that registration expire before inviting it as an administrator.")
     if await db.admin_invitations.find_one({"email": email, "institution_id": institution_id, "used_at": None, "expires_at": {"$gt": datetime.now(timezone.utc)}}):
         raise HTTPException(status_code=409, detail="A valid invitation already exists for this email.")
 
@@ -112,6 +115,7 @@ async def invite_institution_admin(institution_id: str, payload: InstitutionAdmi
         "expires_at": now + timedelta(hours=48),
         "created_by": current_user["id"],
         "used_at": None,
+        "revoked_at": None,
     }
     await db.admin_invitations.insert_one(invite)
     invite_url = settings.APP_BASE_URL.rstrip("/") + "/accept-invitation?token=" + raw_token
@@ -136,7 +140,7 @@ async def accept_institution_admin_invitation(payload: InstitutionAdminInviteAcc
     """Accept a single-use invitation and set the administrator's own password."""
     db = get_database()
     now = datetime.now(timezone.utc)
-    invite = await db.admin_invitations.find_one({"token_hash": hash_token(payload.token), "used_at": None, "expires_at": {"$gt": now}})
+    invite = await db.admin_invitations.find_one({"token_hash": hash_token(payload.token), "used_at": None, "revoked_at": None, "expires_at": {"$gt": now}})
     if not invite:
         raise HTTPException(status_code=400, detail="This invitation is invalid, expired, or already used.")
     institution = await db.institutions.find_one({"_id": invite["institution_id"], "status": "active"})
