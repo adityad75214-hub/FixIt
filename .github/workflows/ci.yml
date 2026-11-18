@@ -2,7 +2,7 @@ name: FixIt CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, feature/public-landing-page-redesign, fix/notification-email-reliability]
   pull_request:
     branches: [main]
 
