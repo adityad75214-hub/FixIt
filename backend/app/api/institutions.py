@@ -92,14 +92,14 @@ async def invite_institution_admin(institution_id: str, payload: InstitutionAdmi
     pending_registration = await db.pending_registrations.find_one({"email": email})
     if pending_registration:
         raise HTTPException(status_code=409, detail="This email has a pending student/faculty verification. Finish or let that registration expire before inviting it as an administrator.")
-    if await db.admin_invitations.find_one({"email": email, "institution_id": institution_id, "used_at": None, "expires_at": {"$gt": datetime.now(timezone.utc)}}):
+    if await db.admin_invitations.find_one({"email": email, "institution_id": institution_id, "used_at": None, "revoked_at": None, "expires_at": {"$gt": datetime.now(timezone.utc)}}):
         raise HTTPException(status_code=409, detail="A valid invitation already exists for this email.")
 
     raw_token = __import__("secrets").token_urlsafe(48)
     now = datetime.now(timezone.utc)
     invitation_id = f"INV-{uuid.uuid4().hex[:12].upper()}"
     active_admin_count = await db.users.count_documents({"institution_id": institution_id, "role": "admin", "$or": [{"is_active": True}, {"is_active": {"$exists": False}}]})
-    pending_primary = await db.admin_invitations.find_one({"institution_id": institution_id, "admin_level": "primary", "used_at": None, "expires_at": {"$gt": now}})
+    pending_primary = await db.admin_invitations.find_one({"institution_id": institution_id, "admin_level": "primary", "used_at": None, "revoked_at": None, "expires_at": {"$gt": now}})
     invited_admin_level = "primary" if current_user.get("role") == "platform_admin" and active_admin_count == 0 and pending_primary is None else "college"
     invite = {
         "_id": invitation_id,
