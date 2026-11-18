@@ -61,6 +61,8 @@ async def _send_admin_invitation(db, institution: dict, request_doc: dict, actor
     email = request_doc["email"].strip().lower()
     if await db.users.find_one({"email": email}):
         raise HTTPException(status_code=409, detail="An account with this email already exists.")
+    if await db.pending_registrations.find_one({"email": email}):
+        raise HTTPException(status_code=409, detail="This email has a pending student/faculty verification. Finish or let that registration expire before inviting it as an administrator.")
     existing = await db.admin_invitations.find_one({
         "email": email, "institution_id": str(institution["_id"]), "used_at": None,
         "expires_at": {"$gt": datetime.now(timezone.utc)}
@@ -78,7 +80,7 @@ async def _send_admin_invitation(db, institution: dict, request_doc: dict, actor
         "designation": request_doc.get("designation"),
         "institution_id": str(institution["_id"]), "token_hash": hash_token(raw_token),
         "created_at": now, "expires_at": now + timedelta(hours=48),
-        "created_by": actor["id"], "used_at": None,
+        "created_by": actor["id"], "used_at": None, "revoked_at": None,
     }
     await db.admin_invitations.insert_one(invitation)
     invite_url = settings.APP_BASE_URL.rstrip("/") + "/accept-invitation?token=" + raw_token
