@@ -8,6 +8,9 @@ export const institutionService = {
   inviteAdmin: (id, data) => api.post(`/institutions/${id}/admins/invitations`, data),
   acceptAdminInvitation: (data) => api.post('/institutions/admin-invitations/accept', data),
   listAdministrators: (id) => api.get(`/institutions/${id}/administrators`),
+  listPendingAdminInvitations: (id) => api.get(`/institutions/${id}/admin-invitations`),
+  cancelAdminInvitation: (id, invitationId) => api.delete(`/institutions/${id}/admin-invitations/${invitationId}`),
+  resendAdminInvitation: (id, invitationId) => api.post(`/institutions/${id}/admin-invitations/${invitationId}/resend`),
   requestAdministrator: (id, data) => api.post(`/institutions/${id}/admin-requests`, data),
   listAdministratorRequests: (id) => api.get(`/institutions/${id}/admin-requests`),
   approveAdministratorRequest: (id, requestId) => api.post(`/institutions/${id}/admin-requests/${requestId}/approve`),
@@ -86,6 +89,8 @@ export const campusService = {
   createBlock: (data) => api.post('/campus/blocks', data),
   getLocations: (params) => api.get('/campus/locations', { params }),
   createLocation: (data) => api.post('/campus/locations', data),
+  updateStructure: (entity, id, data) => api.put(`/campus/${entity}/${id}`, data),
+  deactivateStructure: (entity, id) => api.delete(`/campus/${entity}/${id}`),
 };
 
 export const slaService = {
