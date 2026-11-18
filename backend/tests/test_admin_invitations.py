@@ -152,12 +152,18 @@ def test_admin_invitation_acceptance_rejects_pending_student_registration(client
     monkeypatch.setattr(settings, "SMTP_USERNAME", None)
     monkeypatch.setattr(settings, "APP_BASE_URL", "https://fixit.example")
 
+    platform_admin_id = f"USR-PLATFORM-CROSS-{suffix.upper()}"
+    sync_db.users.insert_one({
+        "_id": platform_admin_id, "email": f"platform-{suffix}@fixit.example",
+        "name": "Test Platform Admin", "role": "platform_admin",
+        "is_active": True, "token_version": 0,
+    })
+    platform_token = create_access_token({"sub": platform_admin_id, "role": "platform_admin", "ver": 0})
     invited = client.post(
         f"/api/institutions/{institution_id}/admins/invitations",
-        headers={"Authorization": f"Bearer {create_access_token({'sub': 'platform-test', 'role': 'platform_admin', 'ver': 0})}"},
+        headers={"Authorization": f"Bearer {platform_token}"},
         json={"email": email, "name": "Cross Role Admin"},
     )
-    # A valid platform-admin principal is supplied by the shared test fixture.
     assert invited.status_code == 202, invited.text
     raw_token = re.search(r"token=([^\s]+)", sent["body"]).group(1)
     sync_db.pending_registrations.insert_one({
