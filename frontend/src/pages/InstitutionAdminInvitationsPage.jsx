@@ -10,6 +10,7 @@ export default function InstitutionAdminInvitationsPage() {
   const [form, setForm] = useState({ name: '', email: '', designation: '', department: '' });
   const [admins, setAdmins] = useState([]);
   const [requests, setRequests] = useState([]);
+  const [invitations, setInvitations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -20,12 +21,14 @@ export default function InstitutionAdminInvitationsPage() {
     setLoading(true);
     setError('');
     try {
-      const [adminResponse, requestResponse] = await Promise.all([
+      const [adminResponse, requestResponse, invitationResponse] = await Promise.all([
         institutionService.listAdministrators(institutionId),
         isPrimary ? institutionService.listAdministratorRequests(institutionId) : Promise.resolve({ data: [] }),
+        isPrimary ? institutionService.listPendingAdminInvitations(institutionId) : Promise.resolve({ data: [] }),
       ]);
       setAdmins(adminResponse.data || []);
       setRequests(requestResponse.data || []);
+      setInvitations(invitationResponse.data || []);
     } catch (err) {
       setError(err.response?.data?.detail || 'Administrator information could not be loaded.');
     } finally {
@@ -63,6 +66,21 @@ export default function InstitutionAdminInvitationsPage() {
       await load();
     } catch (err) {
       setError(err.response?.data?.detail || 'The request could not be reviewed.');
+    } finally { setSaving(false); }
+  };
+
+
+  const manageInvitation = async (invitation, action) => {
+    if (!window.confirm('Continue with ' + action + ' for ' + invitation.email + '?')) return;
+    setSaving(true); setError(''); setNotice('');
+    try {
+      const response = action === 'resend'
+        ? await institutionService.resendAdminInvitation(institutionId, invitation.id)
+        : await institutionService.cancelAdminInvitation(institutionId, invitation.id);
+      setNotice(response.data.message);
+      await load();
+    } catch (err) {
+      setError(err.response?.data?.detail || 'The invitation could not be updated.');
     } finally { setSaving(false); }
   };
 
@@ -125,6 +143,14 @@ export default function InstitutionAdminInvitationsPage() {
         </form>
       </section>
 
+      {isPrimary && <section className="card" style={{ marginBottom: '1.5rem' }}>
+        <div className="card-header"><h2 className="card-title">Pending administrator invitations</h2><span className="badge">{invitations.length} pending</span></div>
+        {loading ? <p>Loading invitations…</p> : invitations.length === 0 ? <p style={{ color: 'var(--text-muted)' }}>There are no pending invitations.</p> : (
+          <div className="table-responsive"><table className="table"><thead><tr><th>Name / Email</th><th>Access level</th><th>Expires</th><th>Actions</th></tr></thead><tbody>
+            {invitations.map(invitation => <tr key={invitation.id}><td><strong>{invitation.name}</strong><br /><small>{invitation.email}</small></td><td>{invitation.admin_level === 'primary' ? 'Primary College Admin' : 'College Admin'}</td><td>{invitation.expires_at ? new Date(invitation.expires_at).toLocaleString() : '—'}</td><td><button className="btn btn-secondary" disabled={saving} onClick={() => manageInvitation(invitation, 'resend')}>Resend</button> <button className="btn btn-secondary" disabled={saving} onClick={() => manageInvitation(invitation, 'cancel')}>Cancel</button></td></tr>)}
+          </tbody></table></div>
+        )}
+      </section>}
       {isPrimary && <section className="card" style={{ marginBottom: '1.5rem' }}>
         <div className="card-header"><h2 className="card-title">Pending administrator requests</h2><span className="badge">{requests.length} pending</span></div>
         {loading ? <p>Loading requests…</p> : requests.length === 0 ? <p style={{ color: 'var(--text-muted)' }}>There are no pending requests.</p> : (
