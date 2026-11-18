@@ -64,7 +64,7 @@ async def _send_admin_invitation(db, institution: dict, request_doc: dict, actor
     if await db.pending_registrations.find_one({"email": email}):
         raise HTTPException(status_code=409, detail="This email has a pending student/faculty verification. Finish or let that registration expire before inviting it as an administrator.")
     existing = await db.admin_invitations.find_one({
-        "email": email, "institution_id": str(institution["_id"]), "used_at": None,
+        "email": email, "institution_id": str(institution["_id"]), "used_at": None, "revoked_at": None,
         "expires_at": {"$gt": datetime.now(timezone.utc)}
     })
     if existing:
