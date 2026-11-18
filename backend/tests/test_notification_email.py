@@ -73,7 +73,7 @@ def test_send_email_uses_implicit_tls_on_port_465(monkeypatch):
     monkeypatch.setattr(settings, "SMTP_USERNAME", None)
     monkeypatch.setattr(settings, "SMTP_PASSWORD", None)
     monkeypatch.setattr(settings, "SMTP_FROM_EMAIL", "noreply@example.test")
-    monkeypatch.setattr(settings, "SMTP_STARTTLS", False)
+    monkeypatch.setattr(settings, "SMTP_STARTTLS", True)
     monkeypatch.setattr(notification_service.smtplib, "SMTP_SSL", FakeSMTPSSL)
 
     notification_service._send_email("student@example.test", "Subject", "Body")
@@ -102,3 +102,15 @@ def test_send_email_rejects_incomplete_configuration(
 
     with pytest.raises((RuntimeError, ValueError)):
         notification_service._send_email(recipient, "Subject", "Body")
+
+
+def test_send_email_refuses_plaintext_smtp(monkeypatch):
+    monkeypatch.setattr(settings, "SMTP_HOST", "smtp.test")
+    monkeypatch.setattr(settings, "SMTP_PORT", 587)
+    monkeypatch.setattr(settings, "SMTP_USERNAME", None)
+    monkeypatch.setattr(settings, "SMTP_PASSWORD", None)
+    monkeypatch.setattr(settings, "SMTP_FROM_EMAIL", "noreply@example.test")
+    monkeypatch.setattr(settings, "SMTP_STARTTLS", False)
+
+    with pytest.raises(RuntimeError, match="must use STARTTLS or implicit TLS"):
+        notification_service._send_email("student@example.test", "Subject", "Body")
