@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Building2, Plus, RefreshCw, School, Layers3, DoorOpen } from 'lucide-react';
+import { Building2, Plus, RefreshCw, School, Layers3, DoorOpen, Pencil, Trash2, X } from 'lucide-react';
 import { campusService } from '../api/services';
 
 const EMPTY_CAMPUS = { name: '', code: '' };
@@ -25,6 +25,8 @@ export default function CampusManagementPage() {
   const [roomForm, setRoomForm] = useState(EMPTY_ROOM);
   const [blockForm, setBlockForm] = useState(EMPTY_BLOCK);
   const [locationForm, setLocationForm] = useState(EMPTY_LOCATION);
+  const [editing, setEditing] = useState(null);
+  const [editValues, setEditValues] = useState({});
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -112,6 +114,42 @@ export default function CampusManagementPage() {
     }
   };
 
+
+  const beginEdit = (entity, record) => {
+    setEditing({ entity, id: record.id });
+    setEditValues(Object.fromEntries(Object.entries(record).filter(([key, value]) =>
+      !['id', '_id', 'is_active', 'rooms', 'locations', 'blocks', 'floors'].includes(key) &&
+      (typeof value === 'string' || typeof value === 'number' || value === null)
+    ).map(([key, value]) => [key, value ?? ''])));
+    setError(''); setSuccess('');
+  };
+  const saveEdit = async (event) => {
+    event.preventDefault();
+    if (!editing) return;
+    setSaving(true); setError(''); setSuccess('');
+    try {
+      const payload = { ...editValues };
+      for (const key of ['total_floors', 'floor_number']) if (payload[key] !== undefined) payload[key] = Number(payload[key]);
+      await campusService.updateStructure(editing.entity, editing.id, payload);
+      setEditing(null); setEditValues({});
+      setSuccess('Campus structure updated successfully.');
+      await load();
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Could not update this campus structure.');
+    } finally { setSaving(false); }
+  };
+  const deactivate = async (entity, record) => {
+    if (!window.confirm('Deactivate this item? Historical records will be preserved.')) return;
+    setError(''); setSuccess('');
+    try {
+      await campusService.deactivateStructure(entity, record.id);
+      setSuccess('Item deactivated successfully.');
+      await load();
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Could not deactivate this item.');
+    }
+  };
+
   const tabs = [
     { id: 'campus', label: 'Campus', icon: School },
     { id: 'building', label: 'Building', icon: Building2 },
@@ -182,17 +220,25 @@ export default function CampusManagementPage() {
           <div className="card-header"><h2 className="card-title"><Building2 size={18} /> Existing campus hierarchy</h2><span className="feature-status">{buildings.length} buildings</span></div>
           {loading ? <p style={{ color: 'var(--text-muted)' }}>Loading campus data…</p> : hierarchy.length === 0 ? <p style={{ color: 'var(--text-muted)' }}>No buildings configured yet. Add a campus and its buildings to activate location selection in ticket reporting.</p> : (
             <div className="campus-tree">
-              {customLocations.filter(location => !location.building_id).length > 0 && <div className="campus-tree-building"><div className="campus-tree-title"><School size={16} /><strong>Campus-wide / Outdoor locations</strong></div>{customLocations.filter(location => !location.building_id).map(location => <div className="campus-tree-floor" key={location.id}><div><DoorOpen size={14} /> {location.name} <small>({location.category.replaceAll('_', ' ')})</small></div></div>)}</div>}
+              {customLocations.filter(location => !location.building_id).length > 0 && <div className="campus-tree-building"><div className="campus-tree-title"><School size={16} /><strong>Campus-wide / Outdoor locations</strong></div>{customLocations.filter(location => !location.building_id).map(location => <div className="campus-tree-floor" key={location.id}><div><DoorOpen size={14} /> {location.name} <small>({location.category.replaceAll('_', ' ')})</small> <button type="button" className="btn btn-secondary" onClick={() => beginEdit('locations', location)}><Pencil size={13}/></button><button type="button" className="btn btn-secondary" onClick={() => deactivate('locations', location)}><Trash2 size={13}/></button></div></div>)}</div>}
               {hierarchy.map(building => <div className="campus-tree-building" key={building.id}>
-                <div className="campus-tree-title"><Building2 size={16} /><strong>{building.name}</strong><span>{building.code}</span><small>{campuses.find(c => c.id === building.campus_id)?.name || 'Campus'}</small></div>
-                {(building.blocks || []).map(block => <div className="campus-tree-floor" key={block.id}><div><Layers3 size={14} /> {block.name} <small>{block.code}</small></div></div>)}
-                {(building.floors || []).map(floor => <div className="campus-tree-floor" key={floor.id}><div><Layers3 size={14} /> {floor.floor_name}</div><ul>{(floor.rooms || []).map(room => <li key={room.id}><span>{room.room_number}</span>{room.room_name && ` · ${room.room_name}`}{room.department && <small> — {room.department}</small>}</li>)}</ul></div>)}
+                <div className="campus-tree-title"><Building2 size={16} /><strong>{building.name}</strong><span>{building.code}</span><small>{campuses.find(c => c.id === building.campus_id)?.name || 'Campus'}</small><button type="button" className="btn btn-secondary" onClick={() => beginEdit('buildings', building)} aria-label="Edit building"><Pencil size={14}/></button><button type="button" className="btn btn-secondary" onClick={() => deactivate('buildings', building)} aria-label="Deactivate building"><Trash2 size={14}/></button></div>
+                {(building.blocks || []).map(block => <div className="campus-tree-floor" key={block.id}><div><Layers3 size={14} /> {block.name} <small>{block.code}</small> <button type="button" className="btn btn-secondary" onClick={() => beginEdit('blocks', block)}><Pencil size={13}/></button><button type="button" className="btn btn-secondary" onClick={() => deactivate('blocks', block)}><Trash2 size={13}/></button></div></div>)}
+                {(building.floors || []).map(floor => <div className="campus-tree-floor" key={floor.id}><div><Layers3 size={14} /> {floor.floor_name} <button type="button" className="btn btn-secondary" onClick={() => beginEdit('floors', { ...floor, building_id: building.id })}><Pencil size={13}/></button><button type="button" className="btn btn-secondary" onClick={() => deactivate('floors', floor)}><Trash2 size={13}/></button></div><ul>{(floor.rooms || []).map(room => <li key={room.id}><span>{room.room_number}</span>{room.room_name && ` · ${room.room_name}`}{room.department && <small> — {room.department}</small>} <button type="button" className="btn btn-secondary" onClick={() => beginEdit('rooms', { ...room, building_id: building.id, floor_id: floor.id })}><Pencil size={13}/></button><button type="button" className="btn btn-secondary" onClick={() => deactivate('rooms', room)}><Trash2 size={13}/></button></li>)}</ul></div>)}
                 {customLocations.filter(location => location.building_id === building.id).map(location => <div className="campus-tree-floor" key={location.id}><div><DoorOpen size={14} /> {location.name} <small>({location.category.replaceAll('_', ' ')})</small></div></div>)}
               </div>)}
             </div>
           )}
         </section>
       </div>
+
+      {editing && <div role="dialog" aria-modal="true" aria-labelledby="campus-edit-title" className="card" style={{ position: 'fixed', top: '8%', left: '20%', right: '20%', bottom: '8%', zIndex: 1000, overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,.25)' }}>
+        <div className="card-header"><h2 id="campus-edit-title">Edit campus structure</h2><button type="button" className="btn btn-secondary" onClick={() => setEditing(null)} aria-label="Close"><X size={16}/></button></div>
+        <form onSubmit={saveEdit}>
+          {Object.entries(editValues).map(([key, value]) => <div className="form-group" key={key}><label className="form-label">{key.replaceAll('_', ' ')}</label><input className="form-control" type={['total_floors', 'floor_number'].includes(key) ? 'number' : 'text'} value={value} onChange={event => setEditValues(prev => ({ ...prev, [key]: event.target.value }))}/></div>)}
+          <div style={{ display: 'flex', gap: '.5rem', justifyContent: 'flex-end' }}><button type="button" className="btn btn-secondary" onClick={() => setEditing(null)}>Cancel</button><button type="submit" className="btn btn-primary" disabled={saving}>{saving ? 'Saving…' : 'Save changes'}</button></div>
+        </form>
+      </div>}
       {selectedBuilding && <span className="sr-only">Selected building: {selectedBuilding.name}</span>}
     </div>
   );
