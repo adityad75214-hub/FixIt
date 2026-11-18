@@ -2,9 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { Building2, Plus, RefreshCw, ShieldCheck, Users } from 'lucide-react';
 import { institutionService } from '../api/services';
 
-const emptyInstitution = { name: '', slug: '', email_domains: '' };
+const emptyInstitution = { name: '', slug: '', email_domains: '', student_email_domains: '', faculty_email_domains: '', student_identifier_pattern: '', faculty_identifier_pattern: '' };
 const emptyAdmin = { email: '', name: '' };
-const emptyEdit = { name: '', email_domains: '' };
+const emptyEdit = { name: '', email_domains: '', student_email_domains: '', faculty_email_domains: '', student_identifier_pattern: '', faculty_identifier_pattern: '' };
 
 export default function PlatformAdminDashboard() {
   const [institutions, setInstitutions] = useState([]);
@@ -42,6 +42,10 @@ export default function PlatformAdminDashboard() {
         name: institutionForm.name.trim(),
         slug: institutionForm.slug.trim().toLowerCase(),
         email_domains: institutionForm.email_domains.split(',').map((value) => value.trim().toLowerCase().replace(/^@/, '')).filter(Boolean),
+        student_email_domains: institutionForm.student_email_domains.split(',').map((value) => value.trim().toLowerCase().replace(/^@/, '')).filter(Boolean),
+        faculty_email_domains: institutionForm.faculty_email_domains.split(',').map((value) => value.trim().toLowerCase().replace(/^@/, '')).filter(Boolean),
+        student_identifier_pattern: institutionForm.student_identifier_pattern.trim() || null,
+        faculty_identifier_pattern: institutionForm.faculty_identifier_pattern.trim() || null,
       };
       const response = await institutionService.create(payload);
       setInstitutionForm(emptyInstitution);
@@ -81,7 +85,7 @@ export default function PlatformAdminDashboard() {
   const selected = institutions.find((item) => item.id === selectedInstitution);
 
   useEffect(() => {
-    if (selected) setEditForm({ name: selected.name, email_domains: (selected.email_domains || []).join(', ') });
+    if (selected) setEditForm({ name: selected.name, email_domains: (selected.email_domains || []).join(', '), student_email_domains: (selected.student_email_domains || []).join(', '), faculty_email_domains: (selected.faculty_email_domains || []).join(', '), student_identifier_pattern: selected.student_identifier_pattern || '', faculty_identifier_pattern: selected.faculty_identifier_pattern || '' });
     else setEditForm(emptyEdit);
   }, [selectedInstitution, institutions]);
 
@@ -93,6 +97,10 @@ export default function PlatformAdminDashboard() {
       const payload = {
         name: editForm.name.trim(),
         email_domains: editForm.email_domains.split(',').map((value) => value.trim().toLowerCase().replace(/^@/, '')).filter(Boolean),
+        student_email_domains: editForm.student_email_domains.split(',').map((value) => value.trim().toLowerCase().replace(/^@/, '')).filter(Boolean),
+        faculty_email_domains: editForm.faculty_email_domains.split(',').map((value) => value.trim().toLowerCase().replace(/^@/, '')).filter(Boolean),
+        student_identifier_pattern: editForm.student_identifier_pattern.trim() || null,
+        faculty_identifier_pattern: editForm.faculty_identifier_pattern.trim() || null,
       };
       const response = await institutionService.update(selected.id, payload);
       setNotice(`Workspace details for ${response.data.name} updated.`);
@@ -135,6 +143,10 @@ export default function PlatformAdminDashboard() {
               <input id="institution-domains" className="form-control" value={institutionForm.email_domains} onChange={(e) => setInstitutionForm({ ...institutionForm, email_domains: e.target.value })} placeholder="nie.ac.in, students.nie.ac.in" />
               <small>Comma-separated. Domain matching is not email ownership verification.</small>
             </div>
+
+            <div className="form-group"><label className="form-label" htmlFor="student-domains">Student email domains</label><input id="student-domains" className="form-control" value={institutionForm.student_email_domains} onChange={(e) => setInstitutionForm({ ...institutionForm, student_email_domains: e.target.value })} placeholder="students.college.edu" /></div>
+            <div className="form-group"><label className="form-label" htmlFor="faculty-domains">Faculty email domains</label><input id="faculty-domains" className="form-control" value={institutionForm.faculty_email_domains} onChange={(e) => setInstitutionForm({ ...institutionForm, faculty_email_domains: e.target.value })} placeholder="faculty.college.edu" /></div>
+            <div className="grid-2"><div className="form-group"><label className="form-label" htmlFor="student-id-pattern">Student ID pattern (optional)</label><input id="student-id-pattern" className="form-control" value={institutionForm.student_identifier_pattern} onChange={(e) => setInstitutionForm({ ...institutionForm, student_identifier_pattern: e.target.value })} placeholder="^USN-[0-9]{6}$" /></div><div className="form-group"><label className="form-label" htmlFor="faculty-id-pattern">Faculty ID pattern (optional)</label><input id="faculty-id-pattern" className="form-control" value={institutionForm.faculty_identifier_pattern} onChange={(e) => setInstitutionForm({ ...institutionForm, faculty_identifier_pattern: e.target.value })} placeholder="^FAC-[0-9]{4}$" /></div></div>
             <button className="btn btn-primary" type="submit" disabled={saving}><Plus size={16} /> {saving ? 'Creating…' : 'Create workspace'}</button>
           </form>
         </section>
@@ -176,6 +188,10 @@ export default function PlatformAdminDashboard() {
               <label className="form-label" htmlFor="edit-institution-domains">Approved email domains</label>
               <input id="edit-institution-domains" className="form-control" value={editForm.email_domains} onChange={(e) => setEditForm({ ...editForm, email_domains: e.target.value })} placeholder="college.edu, students.college.edu" />
             </div>
+
+            <div className="form-group"><label className="form-label" htmlFor="edit-student-domains">Student email domains</label><input id="edit-student-domains" className="form-control" value={editForm.student_email_domains} onChange={(e) => setEditForm({ ...editForm, student_email_domains: e.target.value })} placeholder="students.college.edu" /></div>
+            <div className="form-group"><label className="form-label" htmlFor="edit-faculty-domains">Faculty email domains</label><input id="edit-faculty-domains" className="form-control" value={editForm.faculty_email_domains} onChange={(e) => setEditForm({ ...editForm, faculty_email_domains: e.target.value })} placeholder="faculty.college.edu" /></div>
+            <div className="grid-2"><div className="form-group"><label className="form-label" htmlFor="edit-student-pattern">Student ID pattern (optional)</label><input id="edit-student-pattern" className="form-control" value={editForm.student_identifier_pattern} onChange={(e) => setEditForm({ ...editForm, student_identifier_pattern: e.target.value })} placeholder="^USN-[0-9]{6}$" /></div><div className="form-group"><label className="form-label" htmlFor="edit-faculty-pattern">Faculty ID pattern (optional)</label><input id="edit-faculty-pattern" className="form-control" value={editForm.faculty_identifier_pattern} onChange={(e) => setEditForm({ ...editForm, faculty_identifier_pattern: e.target.value })} placeholder="^FAC-[0-9]{4}$" /></div></div>
             <button className="btn btn-primary" type="submit" disabled={saving}><RefreshCw size={16} /> {saving ? 'Saving…' : 'Save workspace details'}</button>
           </form>
         )}

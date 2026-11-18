@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Wrench, ArrowRight, ShieldCheck, ArrowLeft } from 'lucide-react';
+import { Wrench, ArrowRight, ShieldCheck, ArrowLeft, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { institutionService, authService } from '../api/services';
 
@@ -16,10 +16,13 @@ const initialForm = {
 };
 
 export default function RegisterPage() {
-  const [formData, setFormData] = useState(initialForm);
+  const requestedRole = new URLSearchParams(window.location.search).get('role');
+  const startingRole = ['student', 'faculty'].includes(requestedRole) ? requestedRole : 'student';
+  const [formData, setFormData] = useState({ ...initialForm, role: startingRole });
   const [institutions, setInstitutions] = useState([]);
   const [step, setStep] = useState('details');
   const [code, setCode] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -45,7 +48,8 @@ export default function RegisterPage() {
     setMessage('');
     setLoading(true);
     try {
-      const { data } = await authService.requestRegistrationCode(formData);
+      const { password, ...registrationDetails } = formData;
+      const { data } = await authService.requestRegistrationCode(registrationDetails);
       setStep('verify');
       setMessage(data.message || 'A verification code has been sent to your college email.');
     } catch (err) {
@@ -60,7 +64,7 @@ export default function RegisterPage() {
     setError('');
     setLoading(true);
     try {
-      await completeRegistration(formData.email, code);
+      await completeRegistration(formData.email, code, formData.password);
       navigate('/dashboard');
     } catch (err) {
       setError(err.response?.data?.detail || 'Email verification failed. Check the code and try again.');
@@ -109,7 +113,7 @@ export default function RegisterPage() {
                   <option value="">Select your college</option>
                   {institutions.map((institution) => <option key={institution.id} value={institution.slug}>{institution.name}</option>)}
                 </select>
-                {selectedInstitution && <small style={{ color: 'var(--text-muted)' }}>Use an email address belonging to {selectedInstitution.name}.</small>}
+                {selectedInstitution && <small style={{ color: 'var(--text-muted)' }}>Approved {formData.role} domains: {(formData.role === 'student' ? selectedInstitution.student_email_domains : selectedInstitution.faculty_email_domains)?.join(', ') || selectedInstitution.email_domains?.join(', ') || 'Not configured yet'}.</small>}
               </div>
 
               <div className="form-group">
@@ -139,14 +143,8 @@ export default function RegisterPage() {
                 </div>
               </div>
 
-              <div className="form-group">
-                <label className="form-label" htmlFor="password">Create password</label>
-                <input id="password" type="password" name="password" className="form-control" autoComplete="new-password" value={formData.password} onChange={handleChange} minLength={12} required />
-                <small style={{ color: 'var(--text-muted)' }}>Use at least 12 characters.</small>
-              </div>
-
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-muted)', fontSize: '0.8rem', margin: '1rem 0' }}>
-                <ShieldCheck size={17} /> Your account is created only after your college email is verified.
+                <ShieldCheck size={17} /> First verify your college email. You will create your own password in the next step.
               </div>
               <button type="submit" className="btn btn-navy" style={{ width: '100%', padding: '0.75rem' }} disabled={loading || institutions.length === 0}>
                 {loading ? 'Sending verification code…' : 'Send verification code'} <ArrowRight size={16} />
@@ -157,6 +155,11 @@ export default function RegisterPage() {
               <div className="form-group">
                 <label className="form-label" htmlFor="verification-code">Six-digit verification code</label>
                 <input id="verification-code" className="form-control" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6} value={code} onChange={(event) => setCode(event.target.value.replace(/\D/g, '').slice(0, 6))} placeholder="000000" required />
+              </div>
+              <div className="form-group">
+                <label className="form-label" htmlFor="password">Create your password</label>
+                <input id="password" type={showPassword ? "text" : "password"} name="password" className="form-control" autoComplete="new-password" value={formData.password} onChange={handleChange} minLength={12} required />
+                <button type="button" aria-label={showPassword ? "Hide password" : "Show password"} onClick={() => setShowPassword((value) => !value)} style={{ border: 0, background: "transparent", color: "var(--brand-blue)", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "0.35rem", padding: "0.35rem 0" }}>{showPassword ? <EyeOff size={16} /> : <Eye size={16} />}{showPassword ? "Hide password" : "Show password"}</button><small style={{ display: "block", color: "var(--text-muted)" }}>At least 12 characters. This password belongs only to your account.</small>
               </div>
               <button type="submit" className="btn btn-navy" style={{ width: '100%', padding: '0.75rem' }} disabled={loading || code.length !== 6}>
                 {loading ? 'Verifying…' : 'Verify email and create account'} <ShieldCheck size={16} />

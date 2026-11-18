@@ -165,6 +165,14 @@ async def init_indexes(db):
 
         # Core collection indexes
         await db.users.create_index("email", unique=True)
+        # Enforce student/faculty identifiers per institution at the database
+        # level so concurrent OTP verifications cannot create duplicate IDs.
+        await db.users.create_index(
+            [("institution_id", 1), ("role", 1), ("identifier", 1)],
+            unique=True,
+            partialFilterExpression={"identifier": {"$type": "string"}},
+            name="uniq_institution_role_identifier",
+        )
         await db.users.create_index("role")
 
         await db.tickets.create_index("ticket_id", unique=True)
@@ -216,6 +224,11 @@ async def init_indexes(db):
         await db.counters.create_index("name", unique=True)
 
         await db.pending_registrations.create_index("email", unique=True)
+        await db.pending_registrations.create_index(
+            [("institution_id", 1), ("role", 1), ("identifier", 1)],
+            unique=True,
+            name="uniq_pending_institution_role_identifier",
+        )
         await db.admin_requests.create_index([("institution_id", 1), ("email", 1), ("status", 1)])
         await db.admin_invitations.create_index("token_hash", unique=True)
         await db.admin_invitations.create_index([("institution_id", 1), ("email", 1), ("used_at", 1)])
@@ -223,6 +236,8 @@ async def init_indexes(db):
         await db.refresh_tokens.create_index("token_hash", unique=True)
         await db.refresh_tokens.create_index("user_id")
         await db.refresh_tokens.create_index("expires_at", expireAfterSeconds=0)
+        await db.password_reset_tokens.create_index("user_id")
+        await db.password_reset_tokens.create_index("expires_at", expireAfterSeconds=0)
         await db.login_rate_limits.create_index("window_expires_at", expireAfterSeconds=0)
         logger.info("Database indexes verified for all collections.")
     except Exception:

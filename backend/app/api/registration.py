@@ -26,7 +26,6 @@ class RegistrationRequest(BaseModel):
     institution_slug: str = Field(..., min_length=2, max_length=60)
     name: str = Field(..., min_length=2, max_length=120)
     email: EmailStr = Field(..., max_length=254)
-    password: str = Field(..., min_length=12, max_length=128)
     role: str = Field(..., pattern="^(student|faculty)$")
     department: str = Field(..., min_length=2, max_length=100)
     identifier: str = Field(..., min_length=2, max_length=100)
@@ -36,6 +35,7 @@ class RegistrationRequest(BaseModel):
 class VerifyRegistrationCode(BaseModel):
     email: EmailStr
     code: str = Field(..., min_length=6, max_length=6, pattern=r"^\d{6}$")
+    password: str = Field(..., min_length=12, max_length=128)
 
 
 def _email_domain(email: str) -> str:
@@ -53,16 +53,42 @@ async def request_registration_code(payload: RegistrationRequest, request: Reque
 
     db = get_database()
     email = str(payload.email).strip().lower()
+    identifier = payload.identifier.strip().upper()
     institution = await db.institutions.find_one({"slug": payload.institution_slug.lower(), "status": "active"})
     if not institution:
         raise HTTPException(status_code=404, detail="The selected institution is unavailable.")
 
-    allowed_domains = [str(domain).lower().lstrip("@") for domain in institution.get("email_domains", [])]
+    role_domains = institution.get(f"{payload.role}_email_domains") or institution.get("email_domains", [])
+    allowed_domains = [str(domain).lower().lstrip("@") for domain in role_domains]
     if not allowed_domains or _email_domain(email) not in allowed_domains:
-        raise HTTPException(status_code=403, detail="Use an email address from this institution's approved college email domain.")
+        raise HTTPException(status_code=403, detail=f"Use an approved {payload.role} email domain for this institution.")
+
+    identifier_pattern = institution.get(f"{payload.role}_identifier_pattern")
+    if identifier_pattern:
+        import re
+        try:
+            valid_identifier = re.fullmatch(identifier_pattern, payload.identifier.strip(), flags=re.IGNORECASE) is not None
+        except re.error:
+            raise HTTPException(status_code=500, detail="This institution's identifier rule is misconfigured. Contact its administrator.") from None
+        if not valid_identifier:
+            raise HTTPException(status_code=422, detail=f"The {payload.role} ID does not match this institution's required format.")
 
     if await db.users.find_one({"email": email}):
         raise HTTPException(status_code=409, detail="An account with this email already exists. Please sign in instead.")
+
+    identifier_query = {
+        "institution_id": str(institution["_id"]),
+        "role": payload.role,
+        "identifier": identifier,
+    }
+    if await db.users.find_one(identifier_query):
+        raise HTTPException(status_code=409, detail=f"This {payload.role} ID is already registered in the selected institution.")
+
+    if await db.pending_registrations.find_one({
+        **identifier_query,
+        "email": {"$ne": email},
+    }):
+        raise HTTPException(status_code=409, detail=f"A registration for this {payload.role} ID is already pending verification.")
 
     now = datetime.now(timezone.utc)
     existing_pending = await db.pending_registrations.find_one({"email": email})
@@ -83,10 +109,9 @@ async def request_registration_code(payload: RegistrationRequest, request: Reque
         "institution_slug": institution["slug"],
         "name": payload.name.strip(),
         "email": email,
-        "password_hash": get_password_hash(payload.password),
         "role": payload.role,
         "department": payload.department.strip(),
-        "identifier": payload.identifier.strip(),
+        "identifier": identifier,
         "phone": payload.phone,
         "code_hash": __import__("hashlib").sha256((settings.SECRET_KEY + ":" + code).encode("utf-8")).hexdigest(),
         "attempts": 0,
@@ -95,7 +120,13 @@ async def request_registration_code(payload: RegistrationRequest, request: Reque
         "expires_at": now + timedelta(minutes=CODE_TTL_MINUTES),
     }
     await db.pending_registrations.delete_one({"email": email})
-    await db.pending_registrations.insert_one(pending)
+    try:
+        await db.pending_registrations.insert_one(pending)
+    except DuplicateKeyError:
+        raise HTTPException(
+            status_code=409,
+            detail=f"This {payload.role} ID already has a pending registration in the selected institution.",
+        ) from None
 
     from app.services.notification_service import _send_email
     body = (
@@ -147,9 +178,19 @@ async def verify_registration_code(payload: VerifyRegistrationCode, request: Req
         raise HTTPException(status_code=400, detail="Incorrect verification code.")
 
     institution = await db.institutions.find_one({"_id": pending["institution_id"], "status": "active"})
-    if not institution or _email_domain(email) not in [str(d).lower().lstrip("@") for d in institution.get("email_domains", [])]:
+    approved_domains = (institution.get(f"{pending['role']}_email_domains") or institution.get("email_domains", [])) if institution else []
+    if not institution or _email_domain(email) not in [str(d).lower().lstrip("@") for d in approved_domains]:
         await db.pending_registrations.delete_one({"_id": pending["_id"]})
         raise HTTPException(status_code=403, detail="Institution email verification is no longer valid.")
+
+    duplicate_identifier = await db.users.find_one({
+        "institution_id": pending["institution_id"],
+        "role": pending["role"],
+        "identifier": pending["identifier"],
+    })
+    if duplicate_identifier:
+        await db.pending_registrations.delete_one({"_id": pending["_id"]})
+        raise HTTPException(status_code=409, detail=f"This {pending['role']} ID is already registered in the selected institution.")
 
     consumed = await db.pending_registrations.delete_one({"_id": pending["_id"], "code_hash": submitted_hash})
     if getattr(consumed, "deleted_count", 0) != 1:
@@ -159,7 +200,7 @@ async def verify_registration_code(payload: VerifyRegistrationCode, request: Req
     user = {
         "_id": user_id,
         "email": email,
-        "password_hash": pending["password_hash"],
+        "password_hash": get_password_hash(payload.password),
         "name": pending["name"],
         "role": pending["role"],
         "department": pending["department"],
@@ -170,6 +211,8 @@ async def verify_registration_code(payload: VerifyRegistrationCode, request: Req
         "email_verified": True,
         "email_verified_at": now.isoformat(),
         "approval_method": "institution_email_otp",
+        "membership_verification_status": "email_verified",
+        "membership_verification_note": "College email domain and mailbox verified. No institution directory was available for a separate enrollment match.",
         "institution_id": pending["institution_id"],
         "token_version": 0,
         "created_at": now.isoformat(),
@@ -177,14 +220,20 @@ async def verify_registration_code(payload: VerifyRegistrationCode, request: Req
     try:
         await db.users.insert_one(user)
     except DuplicateKeyError:
-        raise HTTPException(status_code=409, detail="An account with this email already exists. Please sign in.") from None
+        await db.pending_registrations.delete_one({"_id": pending["_id"]})
+        if await db.users.find_one({"email": email}):
+            raise HTTPException(status_code=409, detail="An account with this email already exists. Please sign in.") from None
+        raise HTTPException(
+            status_code=409,
+            detail=f"This {pending['role']} ID is already registered in the selected institution.",
+        ) from None
 
     await record_audit_log(
         action="USER_REGISTERED_EMAIL_VERIFIED",
         resource_type="user",
         resource_id=user_id,
         actor={"id": user_id, "name": user["name"], "email": email, "role": user["role"], "institution_id": user["institution_id"]},
-        details={"institution_id": user["institution_id"], "verification_method": "institution_email_otp"},
+        details={"institution_id": user["institution_id"], "verification_method": "institution_email_otp", "membership_status": "email_verified"},
     )
 
     access_token = create_access_token(data={"sub": user_id, "role": user["role"], "ver": 0})

@@ -1,10 +1,12 @@
 import uuid
 import re
-from datetime import datetime, timezone
-from datetime import timedelta
+import secrets
+import asyncio
+from datetime import datetime, timedelta, timezone
 from pymongo import ReturnDocument
 from pymongo.errors import DuplicateKeyError
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from pydantic import BaseModel, EmailStr, Field
 from app.core.database import get_database
 from app.core.config import settings
 from app.core.security import (
@@ -510,6 +512,101 @@ async def change_password(
     )
     return {"message": "Password changed successfully"}
 
+
+
+
+class PasswordResetRequest(BaseModel):
+    email: EmailStr = Field(..., max_length=254)
+
+
+class PasswordResetConfirm(BaseModel):
+    token: str = Field(..., min_length=32, max_length=256)
+    new_password: str = Field(..., min_length=12, max_length=128)
+
+
+@router.post("/password-reset/request")
+async def request_password_reset(payload: PasswordResetRequest, request: Request):
+    enforce_trusted_origin(request)
+    db = get_database()
+    email = str(payload.email).strip().lower()
+    generic = {"message": "If an account exists for that email, a password reset link will be sent."}
+    user = await db.users.find_one({"email": email})
+    if not user or not user.get("is_active", True) or not settings.APP_BASE_URL:
+        return generic
+
+    now = datetime.now(timezone.utc)
+    recent = await db.password_reset_tokens.find_one({
+        "user_id": str(user["_id"]),
+        "created_at": {"$gt": now - timedelta(seconds=60)},
+    })
+    if recent:
+        return generic
+
+    raw_token = secrets.token_urlsafe(40)
+    token_hash = hash_token(raw_token)
+    await db.password_reset_tokens.delete_many({"user_id": str(user["_id"])})
+    await db.password_reset_tokens.insert_one({
+        "_id": token_hash,
+        "user_id": str(user["_id"]),
+        "created_at": now,
+        "expires_at": now + timedelta(minutes=15),
+    })
+
+    from app.services.notification_service import _send_email
+    reset_url = f"{settings.APP_BASE_URL.rstrip('/')}/reset-password?token={raw_token}"
+    body = (
+        f"Hello {user.get('name', 'there')},\n\n"
+        f"Use this link to reset your FixIt password (valid for 15 minutes):\n{reset_url}\n\n"
+        "If you did not request this, ignore this email."
+    )
+    try:
+        await asyncio.to_thread(_send_email, email, "Reset your FixIt password", body)
+    except Exception:
+        await db.password_reset_tokens.delete_one({"_id": token_hash})
+        return generic
+    return generic
+
+
+@router.post("/password-reset/confirm")
+async def confirm_password_reset(payload: PasswordResetConfirm, request: Request, response: Response):
+    enforce_trusted_origin(request)
+    db = get_database()
+    token_hash = hash_token(payload.token)
+    now = datetime.now(timezone.utc)
+    token_doc = await db.password_reset_tokens.find_one({"_id": token_hash})
+    if not token_doc:
+        raise HTTPException(status_code=400, detail="This password reset link is invalid or has expired. Request a new one.")
+    expires_at = token_doc.get("expires_at")
+    if isinstance(expires_at, str):
+        expires_at = datetime.fromisoformat(expires_at.replace("Z", "+00:00"))
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+    if expires_at <= now:
+        await db.password_reset_tokens.delete_one({"_id": token_hash})
+        raise HTTPException(status_code=400, detail="This password reset link is invalid or has expired. Request a new one.")
+
+    consumed = await db.password_reset_tokens.delete_one({"_id": token_hash, "expires_at": token_doc.get("expires_at")})
+    if getattr(consumed, "deleted_count", 0) != 1:
+        raise HTTPException(status_code=400, detail="This password reset link has already been used. Request a new one.")
+
+    user_id = token_doc["user_id"]
+    updated = await db.users.update_one(
+        {"_id": user_id, "is_active": {"$ne": False}},
+        {"$set": {"password_hash": get_password_hash(payload.new_password), "password_changed_at": now.isoformat()}, "$inc": {"token_version": 1}},
+    )
+    if getattr(updated, "modified_count", 0) != 1:
+        raise HTTPException(status_code=400, detail="This account is unavailable. Contact your administrator.")
+    await db.password_reset_tokens.delete_many({"user_id": user_id})
+    await db.refresh_tokens.delete_many({"user_id": user_id})
+    clear_refresh_cookie(response)
+    await record_audit_log(
+        action="PASSWORD_RESET",
+        resource_type="user",
+        resource_id=user_id,
+        actor={"id": user_id, "role": "system", "name": "Password reset"},
+        details={"status": "success"},
+    )
+    return {"message": "Your password has been reset. You can now sign in."}
 
 
 @router.get("/preferences")
