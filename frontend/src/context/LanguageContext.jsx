@@ -156,6 +156,14 @@ const translations = {
 };
 
 const supplementalTranslations = {
+  "hi": { "Advanced Insights": "उन्नत विश्लेषण" },
+  "kn": { "Advanced Insights": "ಸುಧಾರಿತ ಒಳನೋಟಗಳು" },
+  "ta": { "Advanced Insights": "மேம்பட்ட நுண்ணறிவுகள்" },
+  "te": { "Advanced Insights": "అధునాతన అంతర్దృష్టులు" },
+  "ml": { "Advanced Insights": "വിപുലമായ ഉൾക്കാഴ്ചകൾ" },
+  "mr": { "Advanced Insights": "प्रगत अंतर्दृष्टी" },
+  "bn": { "Advanced Insights": "উন্নত অন্তর্দৃষ্টি" },
+
   "hi": {
     "Support Staff Portal": "सहायता कर्मचारी पोर्टल",
     "Loading campus support": "कैंपस सहायता लोड हो रही है…",
