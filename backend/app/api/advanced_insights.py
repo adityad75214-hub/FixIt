@@ -66,15 +66,25 @@ async def classify_ticket(
 
     # Prefer categories configured by this institution; don't suggest global categories.
     configured = await db.categories.find({"institution_id": tenant, "is_active": True}).to_list(None)
-    configured_names = {str(item.get("name", "")).casefold() for item in configured}
-    if configured_names:
-        scored = [item for item in scored if item[1].casefold() in configured_names]
-
-    suggestions = [
-        {"category": category, "matched_terms": matched,
-         "confidence": round(min(0.95, 0.45 + 0.15 * count), 2)}
-        for count, category, matched in scored[:3]
-    ]
+    configured_names = [str(item.get("name", "")).strip() for item in configured if item.get("name")]
+    suggestions = []
+    for count, canonical_category, matched in scored:
+        aliases = _tokens(canonical_category)
+        # Resolve the keyword family to an actual category configured by this tenant.
+        configured_match = next(
+            (name for name in configured_names
+             if aliases.intersection(_tokens(name))
+             or _tokens(name).intersection(set(matched))),
+            None,
+        )
+        if configured_names and not configured_match:
+            continue
+        suggestions.append({
+            "category": configured_match or canonical_category,
+            "matched_terms": matched,
+            "confidence": round(min(0.95, 0.45 + 0.15 * count), 2),
+        })
+    suggestions = suggestions[:3]
     return {
         "suggestions": suggestions,
         "method": "explainable_keyword_baseline",
