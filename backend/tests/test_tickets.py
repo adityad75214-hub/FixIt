@@ -183,3 +183,36 @@ def test_auto_assignment_leaves_ticket_unassigned_when_no_staff_matches_category
     ticket = response.json()
     assert ticket["assigned_to"] is None
     assert ticket["status"] == "open"
+
+
+
+def test_duplicate_detection_matches_similar_reported_symptoms(client, student_token):
+    headers = {"Authorization": f"Bearer {student_token}"}
+    created = client.post(
+        "/api/tickets",
+        headers=headers,
+        json={
+            "title": "Water leak near the main corridor",
+            "description": "Water is continuously dripping from the ceiling pipe outside room 204 and the floor is wet.",
+            "category": "Plumbing",
+            "priority": "medium",
+            "building": "Engineering Hall",
+            "floor": "1st Floor",
+            "room": "Room 204"
+        }
+    )
+    assert created.status_code == 201, created.text
+
+    check = client.post(
+        "/api/tickets/check-duplicates",
+        headers=headers,
+        json={
+            "title": "Ceiling pipe dripping water",
+            "category": "Plumbing",
+            "building": "Engineering Hall",
+            "room": "Room 204"
+        }
+    )
+    assert check.status_code == 200, check.text
+    matches = check.json()["potential_duplicates"]
+    assert any(item["id"] == created.json()["id"] for item in matches)
