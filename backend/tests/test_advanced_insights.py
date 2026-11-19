@@ -1,4 +1,3 @@
-import pytest
 from app.core.database import get_database
 
 
@@ -28,12 +27,11 @@ def test_staff_recommendations_only_include_qualified_tenant_staff(client, admin
     assert "USR-TEST-STAFF" in [item["staff_id"] for item in payload["recommendations"]]
 
 
-@pytest.mark.asyncio
-async def test_forecast_requires_three_months_and_is_tenant_scoped(client, admin_token):
+def test_forecast_requires_three_months_and_is_tenant_scoped(client, admin_token):
     db = get_database()
-    await db.tickets.delete_many({"institution_id": "INST-DEFAULT", "title": "forecast fixture"})
+    db.tickets.delete_many({"institution_id": "INST-DEFAULT", "title": "forecast fixture"})
     for month in ("2026-08", "2026-09", "2026-10"):
-        await db.tickets.insert_one({
+        db.tickets.insert_one({
             "_id": f"forecast-{month}", "institution_id": "INST-DEFAULT",
             "title": "forecast fixture", "created_at": f"{month}-15T12:00:00+00:00",
             "status": "open", "category": "Network and Wi-Fi",
