@@ -282,7 +282,19 @@ const supplementalTranslations = {
     "Notifications": "বিজ্ঞপ্তি",
     "Mark all read": "সব পড়া হিসেবে চিহ্নিত করুন",
     "No notifications right now": "এখন কোনো বিজ্ঞপ্তি নেই",
-    "View request": "অনুরোধ দেখুন"
+    "View request": "অনুরোধ দেখুন",
+    "Open": "খোলা",
+    "In Progress": "চলমান",
+    "Resolved": "সমাধান হয়েছে",
+    "Closed": "বন্ধ",
+    "Overdue": "সময়সীমা পেরিয়েছে",
+    "At Risk": "ঝুঁকিতে",
+    "Assigned to me": "আমাকে বরাদ্দ",
+    "Department Performance": "বিভাগের কর্মক্ষমতা",
+    "Staff Workload": "কর্মীদের কাজের চাপ",
+    "Resolution Rate": "সমাধানের হার",
+    "Search tickets": "টিকিট খুঁজুন",
+    "Apply Filters": "ফিল্টার প্রয়োগ করুন",
   }
 };
 
@@ -309,18 +321,6 @@ export function LanguageProvider({ children }) {
   useEffect(() => {
     try { localStorage.setItem('fixit_language', language); } catch { /* storage may be unavailable */ }
     document.documentElement.lang = language;
-    "Open": "খোলা",
-    "In Progress": "চলমান",
-    "Resolved": "সমাধান হয়েছে",
-    "Closed": "বন্ধ",
-    "Overdue": "সময়সীমা পেরিয়েছে",
-    "At Risk": "ঝুঁকিতে",
-    "Assigned to me": "আমাকে বরাদ্দ",
-    "Department Performance": "বিভাগের কর্মক্ষমতা",
-    "Staff Workload": "কর্মীদের কাজের চাপ",
-    "Resolution Rate": "সমাধানের হার",
-    "Search tickets": "টিকিট খুঁজুন",
-    "Apply Filters": "ফিল্টার প্রয়োগ করুন",
   }, [language]);
   const t = (value) => supplementalTranslations[language]?.[value] || translations[language]?.[value] || value;
   return <LanguageContext.Provider value={{ language, setLanguage, t }}>{children}</LanguageContext.Provider>;
