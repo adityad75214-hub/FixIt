@@ -142,3 +142,9 @@ export const featureRequestService = {
   create: (data) => api.post('/feature-requests', data),
   update: (id, data) => api.patch(`/feature-requests/${id}`, data),
 };
+
+export const advancedInsightsService = {
+  classifyTicket: (data) => api.post('/advanced-insights/classify', data),
+  recommendStaff: (data) => api.post('/advanced-insights/staff-recommendations', data),
+  getTicketForecast: () => api.get('/advanced-insights/ticket-forecast'),
+};
