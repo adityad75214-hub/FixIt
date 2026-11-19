@@ -53,26 +53,37 @@ async def find_best_staff_for_ticket(category: str, institution_id: Optional[str
         )
         return None
 
+    def normalize(value: str) -> str:
+        # Treat punctuation and spacing variants consistently, e.g.
+        # "Network & Wi-Fi" and "Network and Wi-Fi".
+        return "".join(character for character in (value or "").casefold() if character.isalnum())
+
+    normalized_category = normalize(category)
     scored_candidates = []
-    for s in workload_list:
-        # 1. Specialization match
+    for staff in workload_list:
+        if not staff.get("is_active", True):
+            continue
+
+        # A staff member is eligible only when at least one explicitly assigned
+        # issue category matches. Workload must never override authorization/
+        # capability by assigning an unrelated ticket.
         has_spec = any(
-            spec.lower() in category.lower() or category.lower() in spec.lower()
-            for spec in s.get("specialization", [])
+            normalize(spec) == normalized_category
+            or (len(normalize(spec)) >= 4 and normalize(spec) in normalized_category)
+            or (len(normalized_category) >= 4 and normalized_category in normalize(spec))
+            for spec in staff.get("specialization", [])
+            if isinstance(spec, str) and spec.strip()
         )
-        spec_score = 40 if has_spec else 0
+        if not has_spec:
+            continue
 
-        # 2. Availability score
-        avail_score = 20 if s.get("is_active", True) else 0
-
-        # 3. Workload capacity score (fewer active tickets = higher score)
-        active_cnt = s.get("active_tickets", 0)
+        active_cnt = staff.get("active_tickets", 0)
         workload_score = max(0, 40 - (active_cnt * 5))
-
+        avail_score = 20
+        spec_score = 40
         total_score = spec_score + avail_score + workload_score
-
         scored_candidates.append({
-            **s,
+            **staff,
             "score": total_score,
             "scoring_breakdown": {
                 "specialization": spec_score,
@@ -82,8 +93,17 @@ async def find_best_staff_for_ticket(category: str, institution_id: Optional[str
             }
         })
 
-    # Sort descending by total score
-    scored_candidates.sort(key=lambda s: s["score"], reverse=True)
+    if not scored_candidates:
+        await notify_admins(
+            title="Auto-Assignment Alert: No Matching Staff",
+            message=f"Ticket category '{category}' has no active staff member assigned to that issue category. The ticket remains unassigned.",
+            notif_type="system_alert",
+            institution_id=institution_id
+        )
+        return None
+
+    # Among qualified staff, prefer the lowest active workload.
+    scored_candidates.sort(key=lambda candidate: candidate["score"], reverse=True)
     best = scored_candidates[0]
 
     db = get_database()
