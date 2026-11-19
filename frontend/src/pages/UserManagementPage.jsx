@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Users, UserPlus, Search, Shield, CheckCircle, XCircle } from 'lucide-react';
-import { userService } from '../api/services';
+import { userService, categoryService } from '../api/services';
 import Modal from '../components/Modal';
 import { useAuth } from '../context/AuthContext';
 
@@ -11,15 +11,30 @@ export default function UserManagementPage() {
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
   const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [issueCategories, setIssueCategories] = useState([]);
+  const [categoriesLoading, setCategoriesLoading] = useState(false);
 
   const [newUser, setNewUser] = useState({
     name: '',
     email: '',
     password: '',
     role: 'staff',
-    department: 'Network Operations',
-    specialization: 'Network and Wi-Fi, Computer and Hardware'
+    department: '',
+    specialization: []
   });
+
+  const fetchIssueCategories = async () => {
+    setCategoriesLoading(true);
+    try {
+      const res = await categoryService.getCategories(false);
+      setIssueCategories((res.data || []).filter(category => category.is_active !== false));
+    } catch (error) {
+      console.error('Failed to load issue categories', error);
+      setIssueCategories([]);
+    } finally {
+      setCategoriesLoading(false);
+    }
+  };
 
   const fetchUsers = async () => {
     setLoading(true);
@@ -40,6 +55,10 @@ export default function UserManagementPage() {
     fetchUsers();
   }, [search, roleFilter]);
 
+  useEffect(() => {
+    fetchIssueCategories();
+  }, []);
+
   const handleToggleActive = async (user) => {
     try {
       await userService.updateUser(user.id, { is_active: !user.is_active });
@@ -51,19 +70,20 @@ export default function UserManagementPage() {
 
   const handleCreateSubmit = async (e) => {
     e.preventDefault();
+    if (newUser.role === 'staff' && newUser.specialization.length === 0) {
+      alert('Select at least one issue category for this staff member.');
+      return;
+    }
     try {
-      await userService.createUser({
-        ...newUser,
-        specialization: newUser.specialization.split(',').map(s => s.trim()).filter(Boolean)
-      });
+      await userService.createUser(newUser);
       setCreateModalOpen(false);
       setNewUser({
         name: '',
         email: '',
         password: '',
         role: 'staff',
-        department: 'Network Operations',
-        specialization: 'Network and Wi-Fi'
+        department: '',
+        specialization: []
       });
       fetchUsers();
     } catch (err) {
@@ -76,7 +96,7 @@ export default function UserManagementPage() {
       <div className="page-header">
         <div>
           <h1 className="page-title">User & Staff Accounts Management</h1>
-          <p className="page-subtitle">Provision IT technicians, govern role authorizations, and audit active users</p>
+          <p className="page-subtitle">Manage college users and assign staff to the issue categories they handle</p>
         </div>
         <button className="btn btn-navy" onClick={() => setCreateModalOpen(true)}>
           <UserPlus size={16} /> Create User / Staff Account
@@ -106,7 +126,7 @@ export default function UserManagementPage() {
             <option value="">All Roles</option>
             <option value="student">Student</option>
             <option value="faculty">Faculty</option>
-            <option value="staff">IT Staff</option>
+            <option value="staff">Staff</option>
             <option value="admin">Administrator</option>
           </select>
         </div>
@@ -124,7 +144,7 @@ export default function UserManagementPage() {
                   <th>User Details</th>
                   <th>Role</th>
                   <th>Department / ID</th>
-                  <th>Specialization (Staff)</th>
+                  <th>Issue Categories (Staff)</th>
                   <th>Active Workload</th>
                   <th>Status</th>
                   <th>Actions</th>
@@ -192,7 +212,7 @@ export default function UserManagementPage() {
       <Modal
         isOpen={createModalOpen}
         onClose={() => setCreateModalOpen(false)}
-        title="Provision IT Staff or Campus Account"
+        title="Create User or Staff Account"
       >
         <form onSubmit={handleCreateSubmit}>
           <div className="form-group">
@@ -238,7 +258,7 @@ export default function UserManagementPage() {
                 value={newUser.role}
                 onChange={(e) => setNewUser({ ...newUser, role: e.target.value })}
               >
-                <option value="staff">IT Staff</option>
+                <option value="staff">Staff</option>
                 <option value="admin">Administrator</option>
                 <option value="faculty">Faculty</option>
                 <option value="student">Student</option>
@@ -257,15 +277,38 @@ export default function UserManagementPage() {
 
           {newUser.role === 'staff' && (
             <div className="form-group">
-              <label className="form-label">Technical Specializations (comma separated)</label>
-              <input
-                type="text"
-                className="form-control"
-                placeholder="e.g. Network and Wi-Fi, Computer and Hardware, Projector"
-                value={newUser.specialization}
-                onChange={(e) => setNewUser({ ...newUser, specialization: e.target.value })}
-              />
-              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Used by automatic routing to match complaint categories.</span>
+              <label className="form-label">Issue Categories handled *</label>
+              <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '-0.35rem' }}>
+                Select every active Issue Category this staff member can handle. These categories are loaded from Issue Categories and used for ticket routing.
+              </p>
+              {categoriesLoading ? (
+                <div className="form-control" style={{ color: 'var(--text-muted)' }}>Loading issue categories…</div>
+              ) : issueCategories.length === 0 ? (
+                <div className="form-control" style={{ color: 'var(--text-muted)' }}>
+                  No active issue categories found. Add or activate categories in Issue Categories first.
+                </div>
+              ) : (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '.5rem', border: '1px solid var(--border-color)', borderRadius: '10px', padding: '.85rem', maxHeight: '220px', overflowY: 'auto' }}>
+                  {issueCategories.map(category => (
+                    <label key={category.id} style={{ display: 'flex', alignItems: 'center', gap: '.55rem', fontSize: '.85rem', cursor: 'pointer' }}>
+                      <input
+                        type="checkbox"
+                        checked={newUser.specialization.includes(category.name)}
+                        onChange={(event) => setNewUser({
+                          ...newUser,
+                          specialization: event.target.checked
+                            ? [...newUser.specialization, category.name]
+                            : newUser.specialization.filter(name => name !== category.name)
+                        })}
+                      />
+                      <span>{category.name}</span>
+                    </label>
+                  ))}
+                </div>
+              )}
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                Selected: {newUser.specialization.length}. A staff member can handle multiple categories.
+              </span>
             </div>
           )}
 
