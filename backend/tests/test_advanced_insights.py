@@ -28,20 +28,26 @@ def test_staff_recommendations_only_include_qualified_tenant_staff(client, admin
 
 
 def test_forecast_requires_three_months_and_is_tenant_scoped(client, admin_token):
+    import asyncio
+
     db = get_database()
-    db.tickets.delete_many({"institution_id": "INST-DEFAULT", "title": "forecast fixture"})
-    for month in ("2026-08", "2026-09", "2026-10"):
-        db.tickets.insert_one({
-            "_id": f"forecast-{month}", "institution_id": "INST-DEFAULT",
-            "title": "forecast fixture", "created_at": f"{month}-15T12:00:00+00:00",
-            "status": "open", "category": "Network and Wi-Fi",
+
+    async def seed_forecast_tickets():
+        await db.tickets.delete_many({"title": "forecast fixture"})
+        for month in ("2026-08", "2026-09", "2026-10"):
+            await db.tickets.insert_one({
+                "_id": f"forecast-{month}", "institution_id": "INST-DEFAULT",
+                "title": "forecast fixture", "created_at": f"{month}-15T12:00:00+00:00",
+                "status": "open", "category": "Network and Wi-Fi",
+            })
+        # A foreign-tenant ticket must not affect the local forecast.
+        await db.tickets.insert_one({
+            "_id": "forecast-foreign", "institution_id": "INST-OTHER",
+            "title": "forecast fixture", "created_at": "2026-11-15T12:00:00+00:00",
+            "status": "open",
         })
-    # A foreign-tenant ticket must not affect the local forecast.
-    db.tickets.insert_one({
-        "_id": "forecast-foreign", "institution_id": "INST-OTHER",
-        "title": "forecast fixture", "created_at": "2026-11-15T12:00:00+00:00",
-        "status": "open",
-    })
+
+    asyncio.run(seed_forecast_tickets())
     response = client.get(
         "/api/advanced-insights/ticket-forecast",
         headers={"Authorization": f"Bearer {admin_token}"},
@@ -51,8 +57,7 @@ def test_forecast_requires_three_months_and_is_tenant_scoped(client, admin_token
     assert payload["available"] is True
     observed_months = {item["month"] for item in payload["observations"]}
     assert {"2026-08", "2026-09", "2026-10"}.issubset(observed_months)
-    assert sum(item["tickets"] for item in payload["observations"]) >= 3
-
+    assert sum(item["tickets"] for item in payload["observations"]) == 3
 
 def test_advanced_insights_requires_authentication(client):
     response = client.get("/api/advanced-insights/ticket-forecast")
