@@ -135,6 +135,9 @@ export default function Sidebar({ isOpen, onClose }) {
               <NavLink to="/admin/reports" style={linkStyle} onClick={onClose}>
                 <BarChart3 size={18} />{t('Analytics & Reports')}
               </NavLink>
+              <NavLink to="/admin/insights" style={linkStyle} onClick={onClose}>
+                <BarChart3 size={18} />{t('Advanced Insights')}
+              </NavLink>
               <NavLink to="/admin/audit-logs" style={linkStyle} onClick={onClose}>
                 <ShieldAlert size={18} />{t('Audit Logs')}
               </NavLink>
