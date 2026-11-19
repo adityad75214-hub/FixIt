@@ -76,11 +76,9 @@ async def get_overdue_tickets(current_user: dict = Depends(require_roles("admin"
     # Find all active tickets
     active_query = {"institution_id": institution_id_for(current_user), "status": {"$in": ["open", "assigned", "in_progress", "on_hold", "reopened"]}}
     if current_user["role"] == "staff":
-        active_query["$or"] = [
-            {"assigned_to.id": current_user["id"]},
-            {"assigned_to": None},
-            {"assigned_to": {"$exists": False}},
-        ]
+        # Staff may only see overdue tickets explicitly assigned to them.
+        # Unassigned tickets belong in the administrator's triage queue.
+        active_query["assigned_to.id"] = current_user["id"]
     overdue_list = []
     async for t in db.tickets.find(active_query):
         is_overdue, remaining = check_ticket_sla(t)

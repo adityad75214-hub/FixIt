@@ -223,3 +223,83 @@ def test_csv_export_streams_all_tickets_beyond_previous_1000_record_cap(client, 
     rows = response.text.splitlines()
     assert len(rows) >= len(docs) + 1
     assert sum(1 for row in rows if "CSV scale verification" in row) == len(docs)
+
+
+
+def test_analytics_and_csv_exports_exclude_other_institutions(client, admin_token):
+    from app.core.database import db_manager
+    import uuid
+    from datetime import datetime, timezone
+
+    sync_db = db_manager.db.sync_db
+    foreign_institution = f"INST-FOREIGN-{uuid.uuid4().hex[:8].upper()}"
+    foreign_ticket_id = f"TCK-FOREIGN-{uuid.uuid4().hex[:8].upper()}"
+    now = datetime.now(timezone.utc).isoformat()
+    sync_db.tickets.insert_one({
+        "_id": foreign_ticket_id,
+        "institution_id": foreign_institution,
+        "ticket_id": f"FIXIT-FOREIGN-{uuid.uuid4().hex[:8].upper()}",
+        "title": "CONFIDENTIAL FOREIGN COLLEGE TICKET",
+        "description": "This record must not appear in another institution's reports.",
+        "category": "Private Category",
+        "priority": "critical",
+        "status": "open",
+        "building": "Private Building",
+        "room": "Private Room",
+        "created_by": {"id": "FOREIGN-STUDENT", "name": "Foreign Student", "role": "student"},
+        "created_at": now,
+        "updated_at": now,
+    })
+
+    headers = {"Authorization": f"Bearer {admin_token}"}
+    analytics = client.get("/api/analytics/dashboard", headers=headers)
+    assert analytics.status_code == 200, analytics.text
+    assert analytics.json()["kpis"]["total_tickets"] == sync_db.tickets.count_documents(
+        {"institution_id": "INST-DEFAULT"}
+    )
+
+    report = client.get("/api/reports/export/csv", headers=headers)
+    assert report.status_code == 200, report.text
+    assert "CONFIDENTIAL FOREIGN COLLEGE TICKET" not in report.text
+    assert "Private Category" not in report.text
+
+
+
+def test_analytics_exposes_sla_risk_and_staff_resolution_metrics(client, admin_token):
+    from app.core.database import db_manager
+    from datetime import datetime, timedelta, timezone
+    import uuid
+
+    sync_db = db_manager.db.sync_db
+    run_id = uuid.uuid4().hex[:8]
+    now = datetime.now(timezone.utc)
+    docs = [
+        {
+            "_id": f"ANALYTICS-RISK-{run_id}",
+            "institution_id": "INST-DEFAULT",
+            "ticket_id": f"FIXIT-RISK-{run_id}",
+            "title": "SLA risk analytics verification",
+            "description": "Synthetic ticket for SLA risk metrics.",
+            "category": "General IT Services",
+            "priority": "high",
+            "status": "in_progress",
+            "building": "Test Building",
+            "room": "Test Room",
+            "created_by": {"id": "USR-TEST-STUDENT", "name": "Test Student", "role": "student"},
+            "assigned_to": {"id": "USR-TEST-STAFF", "name": "Analytics Test Staff"},
+            "created_at": now.isoformat(),
+            "updated_at": now.isoformat(),
+            "sla_deadline": (now + timedelta(hours=2)).isoformat(),
+        }
+    ]
+    sync_db.tickets.insert_many(docs)
+
+    response = client.get("/api/analytics/dashboard", headers={"Authorization": f"Bearer {admin_token}"})
+    assert response.status_code == 200, response.text
+    data = response.json()
+    assert data["kpis"]["at_risk_tickets"] >= 1
+    staff_rows = data["charts"]["staff_performance"]
+    row = next(item for item in staff_rows if item["name"] == "Analytics Test Staff")
+    assert row["active"] >= 1
+    assert "resolution_rate" in row
+    assert "department_performance" in data["charts"]

@@ -25,6 +25,7 @@ async def get_dashboard_analytics(current_user: dict = Depends(require_roles("ad
     staff_stats = defaultdict(lambda: {"assigned": 0, "resolved": 0, "resolution_hours_sum": 0.0, "resolution_count": 0})
 
     overdue_count = 0
+    at_risk_count = 0
     total_resolution_hours = 0.0
     resolution_duration_count = 0
     resolved_count = 0
@@ -57,8 +58,20 @@ async def get_dashboard_analytics(current_user: dict = Depends(require_roles("ad
 
         # Check overdue & SLA
         is_overdue, _ = check_ticket_sla(t)
-        if is_overdue and st in ["open", "assigned", "in_progress", "on_hold", "reopened"]:
-            overdue_count += 1
+        if st in ["open", "assigned", "in_progress", "on_hold", "reopened"]:
+            if is_overdue:
+                overdue_count += 1
+            else:
+                deadline_value = t.get("sla_deadline")
+                if deadline_value:
+                    try:
+                        deadline = datetime.fromisoformat(str(deadline_value).replace("Z", "+00:00"))
+                        if deadline.tzinfo is None:
+                            deadline = deadline.replace(tzinfo=timezone.utc)
+                        if 0 <= (deadline - datetime.now(timezone.utc)).total_seconds() <= 4 * 3600:
+                            at_risk_count += 1
+                    except (TypeError, ValueError, OverflowError):
+                        pass
 
         # Resolution calculation
         if st in ["resolved", "closed"] and t.get("resolved_at"):
@@ -112,10 +125,14 @@ async def get_dashboard_analytics(current_user: dict = Depends(require_roles("ad
     staff_performance_data = []
     for s_name, data in staff_stats.items():
         avg_res = round(data["resolution_hours_sum"] / data["resolution_count"], 1) if data["resolution_count"] else 0.0
+        assigned_total = data["assigned"]
+        resolved_total = data["resolved"]
         staff_performance_data.append({
             "name": s_name,
-            "assigned": data["assigned"],
-            "resolved": data["resolved"],
+            "assigned": assigned_total,
+            "resolved": resolved_total,
+            "active": max(0, assigned_total - resolved_total),
+            "resolution_rate": round((resolved_total / assigned_total) * 100, 1) if assigned_total else 0.0,
             "avg_hours": avg_res
         })
 
@@ -138,6 +155,7 @@ async def get_dashboard_analytics(current_user: dict = Depends(require_roles("ad
             "closed_tickets": status_counts["closed"],
             "critical_tickets": priority_counts["critical"],
             "overdue_tickets": overdue_count,
+            "at_risk_tickets": at_risk_count,
             "avg_resolution_hours": avg_resolution_hours,
             "sla_compliance_rate": sla_compliance_rate,
             "average_rating": avg_rating
@@ -148,7 +166,14 @@ async def get_dashboard_analytics(current_user: dict = Depends(require_roles("ad
             "priority_distribution": priority_data,
             "building_distribution": building_data,
             "department_distribution": department_data,
-            "staff_performance": staff_performance_data,
+            "department_performance": [
+                {"name": name, "tickets": count}
+                for name, count in sorted(department_counts.items(), key=lambda item: item[1], reverse=True)
+            ],
+            "staff_performance": sorted(
+                staff_performance_data,
+                key=lambda item: (item["active"], -item["resolution_rate"], item["avg_hours"])
+            ),
             "status_distribution": [{"name": k.replace('_', ' ').title(), "count": v} for k, v in status_counts.items()]
         }
     }

@@ -152,10 +152,23 @@ async def detect_potential_duplicates(
     candidates = await db.tickets.find(query).limit(50).to_list(50)
     duplicates = []
 
+    normalized_building = (building or "").strip().casefold()
+    normalized_room = (room or "").strip().casefold()
+    normalized_category = (category or "").strip().casefold()
+
     for ticket in candidates:
-        sim = calculate_text_similarity(title, ticket.get("title", ""))
-        same_loc = (ticket.get("building") == building and ticket.get("room", "").lower() == room.lower())
-        same_cat = (ticket.get("category") == category)
+        # Compare both title and description so short, differently worded titles
+        # can still be recognized when the reported symptoms are alike.
+        title_similarity = calculate_text_similarity(title, ticket.get("title", ""))
+        description_similarity = calculate_text_similarity(
+            title, ticket.get("description", "")
+        )
+        sim = max(title_similarity, description_similarity * 0.85)
+        same_loc = (
+            (ticket.get("building") or "").strip().casefold() == normalized_building
+            and (ticket.get("room") or "").strip().casefold() == normalized_room
+        )
+        same_cat = (ticket.get("category") or "").strip().casefold() == normalized_category
 
         match_score = sim
         if same_cat and same_loc:
