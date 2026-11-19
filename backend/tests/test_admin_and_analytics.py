@@ -223,3 +223,42 @@ def test_csv_export_streams_all_tickets_beyond_previous_1000_record_cap(client, 
     rows = response.text.splitlines()
     assert len(rows) >= len(docs) + 1
     assert sum(1 for row in rows if "CSV scale verification" in row) == len(docs)
+
+
+
+def test_analytics_and_csv_exports_exclude_other_institutions(client, admin_token):
+    from app.core.database import db_manager
+    import uuid
+    from datetime import datetime, timezone
+
+    sync_db = db_manager.db.sync_db
+    foreign_institution = f"INST-FOREIGN-{uuid.uuid4().hex[:8].upper()}"
+    foreign_ticket_id = f"TCK-FOREIGN-{uuid.uuid4().hex[:8].upper()}"
+    now = datetime.now(timezone.utc).isoformat()
+    sync_db.tickets.insert_one({
+        "_id": foreign_ticket_id,
+        "institution_id": foreign_institution,
+        "ticket_id": f"FIXIT-FOREIGN-{uuid.uuid4().hex[:8].upper()}",
+        "title": "CONFIDENTIAL FOREIGN COLLEGE TICKET",
+        "description": "This record must not appear in another institution's reports.",
+        "category": "Private Category",
+        "priority": "critical",
+        "status": "open",
+        "building": "Private Building",
+        "room": "Private Room",
+        "created_by": {"id": "FOREIGN-STUDENT", "name": "Foreign Student", "role": "student"},
+        "created_at": now,
+        "updated_at": now,
+    })
+
+    headers = {"Authorization": f"Bearer {admin_token}"}
+    analytics = client.get("/api/analytics/dashboard", headers=headers)
+    assert analytics.status_code == 200, analytics.text
+    assert analytics.json()["kpis"]["total_tickets"] == sync_db.tickets.count_documents(
+        {"institution_id": "INST-DEFAULT"}
+    )
+
+    report = client.get("/api/reports/export/csv", headers=headers)
+    assert report.status_code == 200, report.text
+    assert "CONFIDENTIAL FOREIGN COLLEGE TICKET" not in report.text
+    assert "Private Category" not in report.text
