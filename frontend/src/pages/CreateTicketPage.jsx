@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { PlusCircle, AlertTriangle, ArrowRight, ExternalLink } from 'lucide-react';
-import { ticketService, categoryService, campusService, knowledgeBaseService } from '../api/services';
+import { ticketService, categoryService, campusService, knowledgeBaseService, advancedInsightsService } from '../api/services';
 import { useAuth } from '../context/AuthContext';
 import SLAIndicator from '../components/SLAIndicator';
 
@@ -357,6 +357,8 @@ export default function CreateTicketPage() {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [categorySuggestions, setCategorySuggestions] = useState([]);
+  const [classifying, setClassifying] = useState(false);
 
   // Fetch categories & full dynamic campus hierarchy
   useEffect(() => {
@@ -748,6 +750,37 @@ export default function CreateTicketPage() {
               minLength={10}
               required
             />
+          </div>
+
+          <div className="form-group">
+            <button type="button" className="btn btn-secondary btn-sm" disabled={classifying || formData.title.trim().length < 3 || formData.description.trim().length < 5}
+              onClick={async () => {
+                setClassifying(true);
+                try {
+                  const response = await advancedInsightsService.classifyTicket({ title: formData.title, description: formData.description });
+                  setCategorySuggestions(response.data.suggestions || []);
+                } catch (err) {
+                  setError(err?.response?.data?.detail || 'Could not suggest a category right now.');
+                } finally { setClassifying(false); }
+              }}>
+              {classifying ? 'Analyzing issue…' : 'Suggest category'}
+            </button>
+            {categorySuggestions.length > 0 && (
+              <div role="status" style={{ marginTop: '0.5rem', padding: '0.75rem', border: '1px solid var(--border)', borderRadius: 8 }}>
+                <small>Suggestions are keyword-based. Select one to apply it; please verify before submitting.</small>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
+                  {categorySuggestions.map(item => (
+                    <button type="button" key={item.category} className="btn btn-secondary btn-sm"
+                      onClick={() => {
+                        handleCategoryChange({ target: { value: item.category } });
+                        setCategorySuggestions([]);
+                      }}>
+                      {item.category} · {Math.round(item.confidence * 100)}%
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* General-purpose problem domains */}
