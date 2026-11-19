@@ -1,5 +1,5 @@
 from typing import List, Dict, Any
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from app.core.database import get_database
 from app.core.security import get_current_user
 from app.core.tenancy import institution_id_for
@@ -41,10 +41,12 @@ async def mark_notification_as_read(
     current_user: dict = Depends(get_current_user)
 ):
     db = get_database()
-    await db.notifications.update_one(
+    result = await db.notifications.update_one(
         {"_id": notification_id, "user_id": current_user["id"], "institution_id": institution_id_for(current_user)},
         {"$set": {"is_read": True}}
     )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Notification not found")
     return {"message": "Notification marked as read"}
 
 @router.put("/mark-all-read")
