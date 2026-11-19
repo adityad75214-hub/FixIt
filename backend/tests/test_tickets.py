@@ -160,3 +160,26 @@ def test_duplicate_detection_does_not_leak_other_users_ticket_details(client, st
     assert data["has_restricted_matches"] is True
     assert title not in check.text
     assert created.json()["id"] not in check.text
+
+
+
+def test_auto_assignment_leaves_ticket_unassigned_when_no_staff_matches_category(client, student_token):
+    response = client.post(
+        "/api/tickets?auto_assign=true",
+        headers={"Authorization": f"Bearer {student_token}"},
+        json={
+            "title": "Electrical socket is damaged",
+            "description": "The electrical socket near the classroom desk is damaged and needs inspection.",
+            "category": "Electrical Maintenance",
+            "problem_domain": "facilities",
+            "priority": "medium",
+            "building": "Engineering Hall",
+            "floor": "1st Floor",
+            "room": "Lab 101",
+            "affected_users": 1
+        }
+    )
+    assert response.status_code == 201, response.text
+    ticket = response.json()
+    assert ticket["assigned_to"] is None
+    assert ticket["status"] == "open"
