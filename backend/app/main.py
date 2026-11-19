@@ -28,6 +28,7 @@ from app.api.feature_requests import router as feature_requests_router
 from app.api.institutions import router as institutions_router
 from app.api.registration import router as registration_router
 from app.api.admin_governance import router as admin_governance_router
+from app.api.advanced_insights import router as advanced_insights_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -150,6 +151,7 @@ app.include_router(feature_requests_router, prefix=settings.API_V1_STR)
 app.include_router(institutions_router, prefix=settings.API_V1_STR)
 app.include_router(registration_router, prefix=settings.API_V1_STR)
 app.include_router(admin_governance_router, prefix=settings.API_V1_STR)
+app.include_router(advanced_insights_router, prefix=settings.API_V1_STR)
 
 if __name__ == "__main__":
     import uvicorn
