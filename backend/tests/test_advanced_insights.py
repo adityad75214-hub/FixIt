@@ -37,7 +37,7 @@ def test_forecast_requires_three_months_and_is_tenant_scoped(client, admin_token
             "status": "open", "category": "Network and Wi-Fi",
         })
     # A foreign-tenant ticket must not affect the local forecast.
-    await db.tickets.insert_one({
+    db.tickets.insert_one({
         "_id": "forecast-foreign", "institution_id": "INST-OTHER",
         "title": "forecast fixture", "created_at": "2026-11-15T12:00:00+00:00",
         "status": "open",
