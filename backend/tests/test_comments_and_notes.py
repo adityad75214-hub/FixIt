@@ -1,4 +1,4 @@
-def test_public_and_internal_notes_visibility(client, student_token, staff_token):
+def test_public_and_internal_notes_visibility(client, student_token, staff_token, admin_token):
     # Student creates ticket
     create_res = client.post(
         "/api/tickets",
@@ -14,6 +14,14 @@ def test_public_and_internal_notes_visibility(client, student_token, staff_token
     )
     assert create_res.status_code == 201
     ticket_id = create_res.json()["id"]
+
+    # Staff may comment only after the administrator assigns the ticket.
+    assignment_res = client.post(
+        f"/api/assignments/{ticket_id}/assign",
+        headers={"Authorization": f"Bearer {admin_token}"},
+        json={"staff_id": "USR-TEST-STAFF", "note": "Assign for comments visibility test"}
+    )
+    assert assignment_res.status_code == 200, assignment_res.text
 
     # Staff adds a public comment
     pub_res = client.post(
