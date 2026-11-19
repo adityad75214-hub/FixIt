@@ -162,7 +162,7 @@ const supplementalTranslations = {
     "Notifications": "सूचनाएँ",
     "Mark all read": "सभी को पढ़ा हुआ चिह्नित करें",
     "No notifications right now": "अभी कोई सूचना नहीं है",
-    "View request": "अनुरोध देखें"
+    "View request": "अनुरोध देखें",
     "Open": "खुला",
     "In Progress": "प्रगति पर",
     "Resolved": "हल किया गया",
@@ -182,7 +182,7 @@ const supplementalTranslations = {
     "Notifications": "ಅಧಿಸೂಚನೆಗಳು",
     "Mark all read": "ಎಲ್ಲವನ್ನೂ ಓದಿದಂತೆ ಗುರುತಿಸಿ",
     "No notifications right now": "ಈಗ ಯಾವುದೇ ಅಧಿಸೂಚನೆಗಳಿಲ್ಲ",
-    "View request": "ವಿನಂತಿಯನ್ನು ವೀಕ್ಷಿಸಿ"
+    "View request": "ವಿನಂತಿಯನ್ನು ವೀಕ್ಷಿಸಿ",
     "Open": "ತೆರೆದಿದೆ",
     "In Progress": "ಪ್ರಗತಿಯಲ್ಲಿದೆ",
     "Resolved": "ಪರಿಹರಿಸಲಾಗಿದೆ",
@@ -202,7 +202,7 @@ const supplementalTranslations = {
     "Notifications": "அறிவிப்புகள்",
     "Mark all read": "அனைத்தையும் படித்ததாகக் குறிக்கவும்",
     "No notifications right now": "இப்போது அறிவிப்புகள் இல்லை",
-    "View request": "கோரிக்கையைப் பார்க்கவும்"
+    "View request": "கோரிக்கையைப் பார்க்கவும்",
     "Open": "திறந்துள்ளது",
     "In Progress": "செயல 진행த்தில்",
     "Resolved": "தீர்க்கப்பட்டது",
@@ -222,7 +222,7 @@ const supplementalTranslations = {
     "Notifications": "నోటిఫికేషన్‌లు",
     "Mark all read": "అన్నింటినీ చదివినట్లు గుర్తించండి",
     "No notifications right now": "ప్రస్తుతం నోటిఫికేషన్‌లు లేవు",
-    "View request": "అభ్యర్థనను చూడండి"
+    "View request": "అభ్యర్థనను చూడండి",
     "Open": "తెరిచి ఉంది",
     "In Progress": "పురోగతిలో ఉంది",
     "Resolved": "పరిష్కరించబడింది",
@@ -242,7 +242,7 @@ const supplementalTranslations = {
     "Notifications": "അറിയിപ്പുകൾ",
     "Mark all read": "എല്ലാം വായിച്ചതായി അടയാളപ്പെടുത്തുക",
     "No notifications right now": "ഇപ്പോൾ അറിയിപ്പുകളൊന്നുമില്ല",
-    "View request": "അഭ്യർത്ഥന കാണുക"
+    "View request": "അഭ്യർത്ഥന കാണുക",
     "Open": "തുറന്നിരിക്കുന്നു",
     "In Progress": "പുരോഗമിക്കുന്നു",
     "Resolved": "പരിഹരിച്ചു",
@@ -262,7 +262,7 @@ const supplementalTranslations = {
     "Notifications": "सूचना",
     "Mark all read": "सर्व वाचलेले म्हणून चिन्हांकित करा",
     "No notifications right now": "सध्या कोणत्याही सूचना नाहीत",
-    "View request": "विनंती पहा"
+    "View request": "विनंती पहा",
     "Open": "उघडे",
     "In Progress": "प्रगतीपथावर",
     "Resolved": "निराकरण झाले",
