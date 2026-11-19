@@ -1,4 +1,3 @@
-from datetime import datetime, timezone
 from app.core.database import get_database
 
 
@@ -17,7 +16,6 @@ def test_ticket_classifier_returns_explainable_suggestions(client, student_token
 
 
 def test_staff_recommendations_only_include_qualified_tenant_staff(client, admin_token):
-    db = get_database()
     response = client.post(
         "/api/advanced-insights/staff-recommendations",
         json={"category": "Network and Wi-Fi"},
@@ -29,17 +27,18 @@ def test_staff_recommendations_only_include_qualified_tenant_staff(client, admin
     assert "USR-TEST-STAFF" in [item["staff_id"] for item in payload["recommendations"]]
 
 
-def test_forecast_requires_three_months_and_is_tenant_scoped(client, admin_token):
+@__import__('pytest').mark.asyncio
+async def test_forecast_requires_three_months_and_is_tenant_scoped(client, admin_token):
     db = get_database()
-    db.tickets.delete_many({"institution_id": "INST-DEFAULT", "title": "forecast fixture"})
+    await db.tickets.delete_many({"institution_id": "INST-DEFAULT", "title": "forecast fixture"})
     for month in ("2026-08", "2026-09", "2026-10"):
-        db.tickets.insert_one({
+        await db.tickets.insert_one({
             "_id": f"forecast-{month}", "institution_id": "INST-DEFAULT",
             "title": "forecast fixture", "created_at": f"{month}-15T12:00:00+00:00",
             "status": "open", "category": "Network and Wi-Fi",
         })
     # A foreign-tenant ticket must not affect the local forecast.
-    db.tickets.insert_one({
+    await db.tickets.insert_one({
         "_id": "forecast-foreign", "institution_id": "INST-OTHER",
         "title": "forecast fixture", "created_at": "2026-11-15T12:00:00+00:00",
         "status": "open",
