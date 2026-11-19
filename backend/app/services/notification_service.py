@@ -5,6 +5,7 @@ import ssl
 import uuid
 from datetime import datetime, timezone
 from email.message import EmailMessage
+from email.utils import formataddr
 from typing import Optional
 from urllib.parse import urljoin
 
@@ -37,7 +38,8 @@ def _send_email(recipient: str, subject: str, body: str) -> None:
 
     message = EmailMessage()
     message["Subject"] = subject
-    message["From"] = sender
+    sender_name = (settings.SMTP_FROM_NAME or "FixIt").strip() or "FixIt"
+    message["From"] = formataddr((sender_name, sender))
     message["To"] = recipient.strip()
     message.set_content(body)
 

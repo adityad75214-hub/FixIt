@@ -146,11 +146,8 @@ async def accept_institution_admin_invitation(payload: InstitutionAdminInviteAcc
     institution = await db.institutions.find_one({"_id": invite["institution_id"], "status": "active"})
     if not institution:
         raise HTTPException(status_code=400, detail="The institution is unavailable. Contact FixIt support.")
-    invited_domain = invite["email"].rsplit("@", 1)[-1].lower()
-    approved_domains = [str(item).lower().lstrip("@") for item in institution.get("email_domains", [])]
-    if not approved_domains or invited_domain not in approved_domains:
-        await db.admin_invitations.delete_one({"_id": invite["_id"]})
-        raise HTTPException(status_code=403, detail="This invitation no longer matches an approved institution email domain.")
+    # Administrator access is granted by this verified, single-use invitation.
+    # Unlike student/faculty self-registration, invitees may use personal email.
     if await db.users.find_one({"email": invite["email"]}):
         raise HTTPException(status_code=409, detail="An account with this email already exists.")
     if await db.pending_registrations.find_one({"email": invite["email"], "expires_at": {"$gt": now}}):

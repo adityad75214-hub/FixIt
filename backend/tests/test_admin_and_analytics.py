@@ -43,21 +43,20 @@ def test_csv_export_respects_filters(client, admin_token, student_token):
 
 
 def test_staff_cannot_read_or_reassign_ticket_owned_by_another_technician(client, admin_token, staff_token, student_token):
-    # Create a second technician through the admin-only user-management endpoint.
-    created_staff = client.post(
-        "/api/users",
-        headers={"Authorization": f"Bearer {admin_token}"},
-        json={
-            "email": f"second.technician.{uuid.uuid4().hex[:8]}@college.edu",
-            "password": "SecurePassphrase123!",
-            "name": "Second Technician",
-            "role": "staff",
-            "department": "IT Support",
-            "specialization": ["Network and Wi-Fi"]
-        }
-    )
-    assert created_staff.status_code == 201, created_staff.text
-    second_staff_id = created_staff.json()["id"]
+    # Seed a second technician directly as test data. Production staff creation
+    # is invitation-only, so this test must not bypass that API policy.
+    second_staff_id = f"USR-SECOND-TECH-{uuid.uuid4().hex[:8].upper()}"
+    db_manager.db.sync_db.users.insert_one({
+        "_id": second_staff_id,
+        "email": f"second.technician.{uuid.uuid4().hex[:8]}@college.edu",
+        "name": "Second Technician",
+        "role": "staff",
+        "department": "IT Support",
+        "specialization": ["Network and Wi-Fi"],
+        "institution_id": "INST-DEFAULT",
+        "is_active": True,
+        "token_version": 0,
+    })
 
     created_ticket = client.post(
         "/api/tickets",

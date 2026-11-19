@@ -47,13 +47,6 @@ async def _assert_primary(current_user: dict, institution_id: str):
         raise HTTPException(status_code=403, detail="Only the Primary College Admin can approve or manage administrators.")
 
 
-def _check_domain(email: str, institution: dict):
-    domain = email.rsplit("@", 1)[-1].lower()
-    allowed = [str(item).lower().lstrip("@") for item in institution.get("email_domains", [])]
-    if not allowed or domain not in allowed:
-        raise HTTPException(status_code=400, detail="The administrator email must use an approved institution domain.")
-
-
 async def _send_admin_invitation(db, institution: dict, request_doc: dict, actor: dict, admin_level: str = "college"):
     if not settings.SMTP_HOST or not settings.APP_BASE_URL or not (settings.SMTP_FROM_EMAIL or settings.SMTP_USERNAME):
         raise HTTPException(status_code=503, detail="Administrator invitations require SMTP_HOST, sender email, and APP_BASE_URL configuration.")
@@ -126,7 +119,6 @@ async def request_additional_administrator(
     db = get_database()
     institution = await _institution_or_404(db, institution_id)
     email = str(payload.email).strip().lower()
-    _check_domain(email, institution)
     if await db.users.find_one({"email": email}):
         raise HTTPException(status_code=409, detail="An account with this email already exists.")
     primary_admin = await db.users.find_one({
@@ -234,7 +226,6 @@ async def resend_admin_invitation(
         raise HTTPException(status_code=404, detail="Pending invitation not found or expired.")
     if await db.users.find_one({"email": invite["email"]}):
         raise HTTPException(status_code=409, detail="An account with this email already exists.")
-    _check_domain(invite["email"], institution)
     raw_token = secrets.token_urlsafe(48)
     new_expiry = now + timedelta(hours=48)
     # Replace the token before sending: the previous link is immediately invalidated.
@@ -299,7 +290,6 @@ async def approve_admin_request(
     request_doc = await db.admin_requests.find_one({"_id": request_id, "institution_id": institution_id, "status": "pending"})
     if not request_doc:
         raise HTTPException(status_code=404, detail="Pending administrator request not found.")
-    _check_domain(request_doc["email"], institution)
     invitation_id = await _send_admin_invitation(db, institution, request_doc, current_user, "college")
     updated = await db.admin_requests.update_one(
         {"_id": request_id, "institution_id": institution_id, "status": "pending"},

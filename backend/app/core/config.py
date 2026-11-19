@@ -41,6 +41,7 @@ class Settings(BaseSettings):
     SMTP_USERNAME: Optional[str] = None
     SMTP_PASSWORD: Optional[str] = None
     SMTP_FROM_EMAIL: Optional[str] = None
+    SMTP_FROM_NAME: str = "FixIt"
     SMTP_STARTTLS: bool = True
 
     SLA_CRITICAL_HOURS: int = 2

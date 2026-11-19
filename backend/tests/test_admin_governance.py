@@ -42,7 +42,7 @@ def test_college_admin_request_requires_primary_approval(client, admin_token, mo
     response = client.post(
         f"/api/institutions/{institution_id}/admin-requests",
         headers={"Authorization": f"Bearer {requester_token}"},
-        json={"name": "New Admin", "email": f"new-{uuid.uuid4().hex[:6]}@gov-test.edu", "designation": "HOD", "department": "CSE"},
+        json={"name": "New Admin", "email": f"new-{uuid.uuid4().hex[:6]}@gmail.com", "designation": "HOD", "department": "CSE"},
     )
     assert response.status_code == 202, response.text
     request_id = response.json()["request_id"]
@@ -59,11 +59,25 @@ def test_college_admin_request_requires_primary_approval(client, admin_token, mo
         headers={"Authorization": f"Bearer {admin_token}"},
     )
     assert approved.status_code == 200, approved.text
-    assert sent["recipient"].endswith("@gov-test.edu")
+    assert sent["recipient"].endswith("@gmail.com")
     assert db.admin_requests.find_one({"_id": request_id})["status"] == "approved"
     assert db.notifications.find_one({"user_id": requester_id, "title": "Administrator request approved"})
     invitation = db.admin_invitations.find_one({"email": sent["recipient"]})
     assert invitation["admin_level"] == "college"
+
+    # The invited administrator may accept using the same personal email
+    # address; the invitation itself supplies the role and institution.
+    from urllib.parse import parse_qs, urlparse
+    invite_url = sent["body"].split("Accept your invitation: ", 1)[1].splitlines()[0]
+    token = parse_qs(urlparse(invite_url).query)["token"][0]
+    accepted = client.post(
+        "/api/institutions/admin-invitations/accept",
+        json={"token": token, "password": "SecurePassphrase123!"},
+    )
+    assert accepted.status_code == 201, accepted.text
+    assert accepted.json()["user"]["email"] == sent["recipient"]
+    assert accepted.json()["user"]["role"] == "admin"
+    assert db.admin_invitations.find_one({"_id": invitation["_id"]})["used_at"] is not None
 
 
 def test_college_admin_cannot_directly_invite_without_primary_role(client, monkeypatch):
