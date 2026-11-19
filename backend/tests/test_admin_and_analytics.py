@@ -262,3 +262,44 @@ def test_analytics_and_csv_exports_exclude_other_institutions(client, admin_toke
     assert report.status_code == 200, report.text
     assert "CONFIDENTIAL FOREIGN COLLEGE TICKET" not in report.text
     assert "Private Category" not in report.text
+
+
+
+def test_analytics_exposes_sla_risk_and_staff_resolution_metrics(client, admin_token):
+    from app.core.database import db_manager
+    from datetime import datetime, timedelta, timezone
+    import uuid
+
+    sync_db = db_manager.db.sync_db
+    run_id = uuid.uuid4().hex[:8]
+    now = datetime.now(timezone.utc)
+    docs = [
+        {
+            "_id": f"ANALYTICS-RISK-{run_id}",
+            "institution_id": "INST-DEFAULT",
+            "ticket_id": f"FIXIT-RISK-{run_id}",
+            "title": "SLA risk analytics verification",
+            "description": "Synthetic ticket for SLA risk metrics.",
+            "category": "General IT Services",
+            "priority": "high",
+            "status": "in_progress",
+            "building": "Test Building",
+            "room": "Test Room",
+            "created_by": {"id": "USR-TEST-STUDENT", "name": "Test Student", "role": "student"},
+            "assigned_to": {"id": "USR-TEST-STAFF", "name": "Analytics Test Staff"},
+            "created_at": now.isoformat(),
+            "updated_at": now.isoformat(),
+            "sla_deadline": (now + timedelta(hours=2)).isoformat(),
+        }
+    ]
+    sync_db.tickets.insert_many(docs)
+
+    response = client.get("/api/analytics/dashboard", headers={"Authorization": f"Bearer {admin_token}"})
+    assert response.status_code == 200, response.text
+    data = response.json()
+    assert data["kpis"]["at_risk_tickets"] >= 1
+    staff_rows = data["charts"]["staff_performance"]
+    row = next(item for item in staff_rows if item["name"] == "Analytics Test Staff")
+    assert row["active"] >= 1
+    assert "resolution_rate" in row
+    assert "department_performance" in data["charts"]
