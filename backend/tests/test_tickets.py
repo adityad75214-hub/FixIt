@@ -192,13 +192,13 @@ def test_duplicate_detection_matches_similar_reported_symptoms(client, student_t
         "/api/tickets",
         headers=headers,
         json={
-            "title": "Water leak near the main corridor",
-            "description": "Water is continuously dripping from the ceiling pipe outside room 204 and the floor is wet.",
+            "title": "Water leak near Engineering Hall Lab 102",
+            "description": "Water is continuously dripping from the ceiling pipe near Lab 102 and the floor is wet.",
             "category": "Plumbing",
             "priority": "medium",
             "building": "Engineering Hall",
             "floor": "1st Floor",
-            "room": "Room 204"
+            "room": "Lab 102"
         }
     )
     assert created.status_code == 201, created.text
@@ -207,10 +207,10 @@ def test_duplicate_detection_matches_similar_reported_symptoms(client, student_t
         "/api/tickets/check-duplicates",
         headers=headers,
         json={
-            "title": "Ceiling pipe dripping water",
+            "title": "Ceiling pipe dripping water near Engineering Hall",
             "category": "Plumbing",
             "building": "Engineering Hall",
-            "room": "Room 204"
+            "room": "Lab 102"
         }
     )
     assert check.status_code == 200, check.text
