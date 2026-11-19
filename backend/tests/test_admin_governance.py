@@ -65,6 +65,20 @@ def test_college_admin_request_requires_primary_approval(client, admin_token, mo
     invitation = db.admin_invitations.find_one({"email": sent["recipient"]})
     assert invitation["admin_level"] == "college"
 
+    # The invited administrator may accept using the same personal email
+    # address; the invitation itself supplies the role and institution.
+    from urllib.parse import parse_qs, urlparse
+    invite_url = sent["body"].split("Accept your invitation: ", 1)[1].splitlines()[0]
+    token = parse_qs(urlparse(invite_url).query)["token"][0]
+    accepted = client.post(
+        "/api/institutions/admin-invitations/accept",
+        json={"token": token, "password": "SecurePassphrase123!"},
+    )
+    assert accepted.status_code == 201, accepted.text
+    assert accepted.json()["user"]["email"] == sent["recipient"]
+    assert accepted.json()["user"]["role"] == "admin"
+    assert db.admin_invitations.find_one({"_id": invitation["_id"]})["used_at"] is not None
+
 
 def test_college_admin_cannot_directly_invite_without_primary_role(client, monkeypatch):
     institution_id = _setup_institution()
