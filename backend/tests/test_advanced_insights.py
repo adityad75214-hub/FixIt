@@ -1,3 +1,4 @@
+import pytest
 from app.core.database import get_database
 
 
@@ -27,7 +28,7 @@ def test_staff_recommendations_only_include_qualified_tenant_staff(client, admin
     assert "USR-TEST-STAFF" in [item["staff_id"] for item in payload["recommendations"]]
 
 
-@__import__('pytest').mark.asyncio
+@pytest.mark.asyncio
 async def test_forecast_requires_three_months_and_is_tenant_scoped(client, admin_token):
     db = get_database()
     await db.tickets.delete_many({"institution_id": "INST-DEFAULT", "title": "forecast fixture"})
