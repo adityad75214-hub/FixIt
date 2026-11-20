@@ -239,7 +239,6 @@ export default function UserManagementPage() {
                 onChange={(e) => setNewUser({ ...newUser, role: e.target.value })}
               >
                 <option value="staff">IT Staff</option>
-                <option value="admin">Administrator</option>
                 <option value="faculty">Faculty</option>
                 <option value="student">Student</option>
               </select>
