@@ -31,23 +31,33 @@ def test_forecast_requires_three_months_and_is_tenant_scoped(client, admin_token
     import asyncio
 
     db = get_database()
+    headers = {"Authorization": f"Bearer {admin_token}"}
+    endpoint = "/api/advanced-insights/ticket-forecast"
+
+    baseline_response = client.get(endpoint, headers=headers)
+    assert baseline_response.status_code == 200
+    baseline = baseline_response.json()
+    baseline_counts = {
+        item["month"]: item["tickets"]
+        for item in baseline.get("observations", [])
+    }
 
     async def seed_forecast_tickets():
         await db.tickets.delete_many({"title": "forecast fixture"})
         for index, month in enumerate(("2026-08", "2026-09", "2026-10"), start=1):
             await db.tickets.insert_one({
                 "_id": f"forecast-{month}",
-                "ticket_id": f"TKT-FORECAST-{index}",
+                "ticket_id": f"TKT-FORECAST-FIXTURE-{index}",
                 "institution_id": "INST-DEFAULT",
                 "title": "forecast fixture",
                 "created_at": f"{month}-15T12:00:00+00:00",
                 "status": "open",
                 "category": "Network and Wi-Fi",
             })
-        # A foreign-tenant ticket must not affect the local forecast.
+        # This record must not contribute to the authenticated tenant's forecast.
         await db.tickets.insert_one({
             "_id": "forecast-foreign",
-            "ticket_id": "TKT-FORECAST-FOREIGN",
+            "ticket_id": "TKT-FORECAST-FIXTURE-FOREIGN",
             "institution_id": "INST-OTHER",
             "title": "forecast fixture",
             "created_at": "2026-11-15T12:00:00+00:00",
@@ -55,16 +65,20 @@ def test_forecast_requires_three_months_and_is_tenant_scoped(client, admin_token
         })
 
     asyncio.run(seed_forecast_tickets())
-    response = client.get(
-        "/api/advanced-insights/ticket-forecast",
-        headers={"Authorization": f"Bearer {admin_token}"},
-    )
+    response = client.get(endpoint, headers=headers)
     assert response.status_code == 200
     payload = response.json()
     assert payload["available"] is True
-    observed_months = {item["month"] for item in payload["observations"]}
-    assert {"2026-08", "2026-09", "2026-10"}.issubset(observed_months)
-    assert sum(item["tickets"] for item in payload["observations"]) == 3
+
+    observed_counts = {
+        item["month"]: item["tickets"]
+        for item in payload["observations"]
+    }
+    for month in ("2026-08", "2026-09", "2026-10"):
+        assert observed_counts[month] - baseline_counts.get(month, 0) == 1
+
+    # The foreign tenant's November record must not appear as an increment.
+    assert observed_counts.get("2026-11", 0) - baseline_counts.get("2026-11", 0) == 0
 
 
 def test_advanced_insights_requires_authentication(client):
