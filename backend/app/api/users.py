@@ -102,8 +102,8 @@ async def create_user_by_admin(
     db = get_database()
     if user_in.role.value == "platform_admin":
         raise HTTPException(status_code=403, detail="Platform administrator accounts can only be provisioned through the platform operations process.")
-    if user_in.role.value == "admin":
-        raise HTTPException(status_code=403, detail="College administrator accounts must be created through the invitation and approval workflow.")
+    if user_in.role.value in {"admin", "staff"}:
+        raise HTTPException(status_code=403, detail="Administrator and staff accounts must be provisioned through an approved invitation workflow.")
     existing = await db.users.find_one({"email": user_in.email.lower()})
     if existing:
         raise HTTPException(status_code=400, detail="User with this email already exists")

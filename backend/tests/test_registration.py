@@ -128,3 +128,27 @@ def test_incorrect_registration_code_does_not_create_user(client, monkeypatch):
     verified = client.post("/api/auth/registration/verify-code", json={"email": email, "code": "000000", "password": "SecurePassphrase123!"})
     assert verified.status_code == 400
     assert db_manager.db.sync_db.users.find_one({"email": email}) is None
+
+
+
+def test_personal_mail_domains_are_blocked_even_if_institution_configures_them(client, monkeypatch):
+    monkeypatch.setattr(settings, "PUBLIC_REGISTRATION_ENABLED", True)
+    monkeypatch.setattr(settings, "SMTP_HOST", "smtp.test")
+    monkeypatch.setattr(settings, "SMTP_FROM_EMAIL", "noreply@fixit.test")
+    monkeypatch.setattr(settings, "APP_BASE_URL", "https://fixit.test")
+    institution_id, slug = _institution()
+    db_manager.db.sync_db.institutions.update_one(
+        {"_id": institution_id}, {"$set": {"email_domains": ["gmail.com", "googlemail.com"]}}
+    )
+
+    for email in ("student@gmail.com", "student@googlemail.com"):
+        response = client.post("/api/auth/registration/request-code", json={
+            "institution_slug": slug,
+            "name": "Personal Email",
+            "email": email,
+            "role": "student",
+            "department": "Computer Science",
+            "identifier": f"USN-{uuid.uuid4().hex[:8]}",
+        })
+        assert response.status_code == 403
+        assert db_manager.db.sync_db.pending_registrations.find_one({"email": email}) is None

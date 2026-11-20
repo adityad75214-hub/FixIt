@@ -42,6 +42,17 @@ def _email_domain(email: str) -> str:
     return email.rsplit("@", 1)[-1].lower()
 
 
+# Consumer mailbox providers must never qualify as institutional domains,
+# even if an institution is accidentally configured with one.
+PERSONAL_EMAIL_DOMAINS = {"gmail.com", "googlemail.com"}
+
+
+def _is_approved_institution_email(email: str, domains: list[str]) -> bool:
+    domain = _email_domain(email)
+    normalized_domains = {str(item).strip().lower().lstrip("@") for item in domains}
+    return domain not in PERSONAL_EMAIL_DOMAINS and domain in normalized_domains
+
+
 @router.post("/request-code", status_code=status.HTTP_202_ACCEPTED)
 async def request_registration_code(payload: RegistrationRequest, request: Request):
     enforce_trusted_origin(request)
@@ -60,7 +71,7 @@ async def request_registration_code(payload: RegistrationRequest, request: Reque
 
     role_domains = institution.get(f"{payload.role}_email_domains") or institution.get("email_domains", [])
     allowed_domains = [str(domain).lower().lstrip("@") for domain in role_domains]
-    if not allowed_domains or _email_domain(email) not in allowed_domains:
+    if not _is_approved_institution_email(email, allowed_domains):
         raise HTTPException(status_code=403, detail=f"Use an approved {payload.role} email domain for this institution.")
 
     identifier_pattern = institution.get(f"{payload.role}_identifier_pattern")
@@ -179,7 +190,7 @@ async def verify_registration_code(payload: VerifyRegistrationCode, request: Req
 
     institution = await db.institutions.find_one({"_id": pending["institution_id"], "status": "active"})
     approved_domains = (institution.get(f"{pending['role']}_email_domains") or institution.get("email_domains", [])) if institution else []
-    if not institution or _email_domain(email) not in [str(d).lower().lstrip("@") for d in approved_domains]:
+    if not institution or not _is_approved_institution_email(email, approved_domains):
         await db.pending_registrations.delete_one({"_id": pending["_id"]})
         raise HTTPException(status_code=403, detail="Institution email verification is no longer valid.")
 
