@@ -34,16 +34,23 @@ def test_forecast_requires_three_months_and_is_tenant_scoped(client, admin_token
 
     async def seed_forecast_tickets():
         await db.tickets.delete_many({"title": "forecast fixture"})
-        for month in ("2026-08", "2026-09", "2026-10"):
+        for index, month in enumerate(("2026-08", "2026-09", "2026-10"), start=1):
             await db.tickets.insert_one({
-                "_id": f"forecast-{month}", "institution_id": "INST-DEFAULT",
-                "title": "forecast fixture", "created_at": f"{month}-15T12:00:00+00:00",
-                "status": "open", "category": "Network and Wi-Fi",
+                "_id": f"forecast-{month}",
+                "ticket_id": f"TKT-FORECAST-{index}",
+                "institution_id": "INST-DEFAULT",
+                "title": "forecast fixture",
+                "created_at": f"{month}-15T12:00:00+00:00",
+                "status": "open",
+                "category": "Network and Wi-Fi",
             })
         # A foreign-tenant ticket must not affect the local forecast.
         await db.tickets.insert_one({
-            "_id": "forecast-foreign", "institution_id": "INST-OTHER",
-            "title": "forecast fixture", "created_at": "2026-11-15T12:00:00+00:00",
+            "_id": "forecast-foreign",
+            "ticket_id": "TKT-FORECAST-FOREIGN",
+            "institution_id": "INST-OTHER",
+            "title": "forecast fixture",
+            "created_at": "2026-11-15T12:00:00+00:00",
             "status": "open",
         })
 
@@ -58,6 +65,7 @@ def test_forecast_requires_three_months_and_is_tenant_scoped(client, admin_token
     observed_months = {item["month"] for item in payload["observations"]}
     assert {"2026-08", "2026-09", "2026-10"}.issubset(observed_months)
     assert sum(item["tickets"] for item in payload["observations"]) == 3
+
 
 def test_advanced_insights_requires_authentication(client):
     response = client.get("/api/advanced-insights/ticket-forecast")
