@@ -40,6 +40,35 @@ SMTP_FROM_EMAIL=
 SMTP_STARTTLS=true
 ```
 
+### Configure SMTP with Brevo (student and faculty verification)
+
+FixIt uses the same SMTP connection for both student and faculty registration. Each role is checked against its own approved institution email domain, and both roles must enter the six-digit code delivered to their mailbox. You do not need a faculty mailbox to configure the provider; a faculty member will be needed later to perform a real faculty-mailbox delivery test.
+
+For a first deployment, Brevo is a straightforward SMTP option:
+
+1. Create a Brevo account and complete the account/sender verification steps required by Brevo.
+2. In Brevo, open **Settings → Senders, Domains & Dedicated IPs** and verify the sender address you intend to use (for example, `noreply@your-verified-domain.example`). Do not use an address you do not control.
+3. Open **SMTP & API → SMTP** and copy the SMTP login and generate/copy an SMTP key. The SMTP key is the password; it is not the Brevo API key.
+4. Set these values in the backend host's secret environment settings (Render for the current API deployment):
+
+   ```env
+   SMTP_HOST=smtp-relay.brevo.com
+   SMTP_PORT=587
+   SMTP_USERNAME=YOUR_BREVO_SMTP_LOGIN
+   SMTP_PASSWORD=YOUR_BREVO_SMTP_KEY
+   SMTP_FROM_EMAIL=YOUR_VERIFIED_SENDER_ADDRESS
+   SMTP_STARTTLS=true
+   APP_BASE_URL=https://fixit-7akm44cfb-roy952027-7769.vercel.app
+   PUBLIC_REGISTRATION_ENABLED=true
+   ```
+
+5. Keep the SMTP key private. Enter it only in the backend host's environment-variable dashboard; never commit it, put it in frontend variables, or paste it into chat.
+6. Configure the institution's `student_email_domains` and `faculty_email_domains` independently. Both must be exact domains without an `@` prefix.
+7. Deploy/restart the backend, then verify that its health endpoint is healthy and test a student OTP end to end. Ask an authorized faculty member to test faculty delivery before announcing faculty registration as verified.
+8. Only after the backend SMTP settings and institution domains are ready, set `VITE_PUBLIC_REGISTRATION_ENABLED=true` in the Vercel production environment and redeploy the frontend.
+
+The production backend validates that SMTP, a sender address, and `APP_BASE_URL` exist before public registration can be enabled. The registration endpoints also reject requests when SMTP is unavailable. Both student and faculty registration use the same OTP flow; the role-specific domain check is performed by the backend.
+
 ## Project structure
 
 - `backend/` — FastAPI API, MongoDB integration, authentication, ticket workflows, and automated tests.
