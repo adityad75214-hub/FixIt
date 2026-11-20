@@ -17,6 +17,7 @@ const PasswordRecoveryPage = lazy(() => import('./pages/PasswordRecoveryPage'));
 const StudentDashboard = lazy(() => import('./pages/StudentDashboard'));
 const StaffDashboard = lazy(() => import('./pages/StaffDashboard'));
 const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
+const AdvancedInsightsPage = lazy(() => import('./pages/AdvancedInsightsPage'));
 const CreateTicketPage = lazy(() => import('./pages/CreateTicketPage'));
 const TicketListPage = lazy(() => import('./pages/TicketListPage'));
 const TicketDetailPage = lazy(() => import('./pages/TicketDetailPage'));
@@ -115,6 +116,7 @@ export default function App() {
                   <Route path="/admin/audit-logs" element={<AuditLogsPage />} />
                   <Route path="/admin/campus" element={<CampusManagementPage />} />
                   <Route path="/admin/categories" element={<CategoryManagementPage />} />
+                  <Route path="/admin/insights" element={<AdvancedInsightsPage />} />
                 </Route>
               </Route>
             </Route>

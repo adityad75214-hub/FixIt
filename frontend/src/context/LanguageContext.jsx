@@ -175,6 +175,7 @@ const supplementalTranslations = {
     "Resolution Rate": "समाधान दर",
     "Search tickets": "टिकट खोजें",
     "Apply Filters": "फ़िल्टर लागू करें",
+    "Advanced Insights": "उन्नत विश्लेषण",
   },
   "kn": {
     "Support Staff Portal": "ಸಹಾಯ ಸಿಬ್ಬಂದಿ ಪೋರ್ಟಲ್",
@@ -195,6 +196,7 @@ const supplementalTranslations = {
     "Resolution Rate": "ಪರಿಹಾರ ಪ್ರಮಾಣ",
     "Search tickets": "ಟಿಕೆಟ್‌ಗಳನ್ನು ಹುಡುಕಿ",
     "Apply Filters": "ಫಿಲ್ಟರ್ ಅನ್ವಯಿಸಿ",
+    "Advanced Insights": "ಸುಧಾರಿತ ಒಳನೋಟಗಳು",
   },
   "ta": {
     "Support Staff Portal": "ஆதரவு பணியாளர் தளம்",
@@ -215,6 +217,7 @@ const supplementalTranslations = {
     "Resolution Rate": "தீர்வு விகிதம்",
     "Search tickets": "கோரிக்கைகளைத் தேடுங்கள்",
     "Apply Filters": "வடிகட்டிகளைப் பயன்படுத்து",
+    "Advanced Insights": "மேம்பட்ட நுண்ணறிவுகள்",
   },
   "te": {
     "Support Staff Portal": "సహాయ సిబ్బంది పోర్టల్",
@@ -235,6 +238,7 @@ const supplementalTranslations = {
     "Resolution Rate": "పరిష్కార రేటు",
     "Search tickets": "టికెట్లను వెతకండి",
     "Apply Filters": "ఫిల్టర్లను వర్తింపజేయండి",
+    "Advanced Insights": "అధునాతన అంతర్దృష్టులు",
   },
   "ml": {
     "Support Staff Portal": "സഹായ ജീവനക്കാരുടെ പോർട്ടൽ",
@@ -255,6 +259,7 @@ const supplementalTranslations = {
     "Resolution Rate": "പരിഹാര നിരക്ക്",
     "Search tickets": "ടിക്കറ്റുകൾ തിരയുക",
     "Apply Filters": "ഫിൽട്ടറുകൾ പ്രയോഗിക്കുക",
+    "Advanced Insights": "വിപുലമായ ഉൾക്കാഴ്ചകൾ",
   },
   "mr": {
     "Support Staff Portal": "सहाय्य कर्मचारी पोर्टल",
@@ -275,6 +280,7 @@ const supplementalTranslations = {
     "Resolution Rate": "निराकरण दर",
     "Search tickets": "तिकिटे शोधा",
     "Apply Filters": "फिल्टर लागू करा",
+    "Advanced Insights": "प्रगत अंतर्दृष्टी",
   },
   "bn": {
     "Support Staff Portal": "সহায়তা কর্মী পোর্টাল",
@@ -295,6 +301,7 @@ const supplementalTranslations = {
     "Resolution Rate": "সমাধানের হার",
     "Search tickets": "টিকিট খুঁজুন",
     "Apply Filters": "ফিল্টার প্রয়োগ করুন",
+    "Advanced Insights": "উন্নত অন্তর্দৃষ্টি",
   }
 };
 
