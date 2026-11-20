@@ -27,20 +27,26 @@ def test_staff_recommendations_only_include_qualified_tenant_staff(client, admin
     assert "USR-TEST-STAFF" in [item["staff_id"] for item in payload["recommendations"]]
 
 
+def _observation_counts(observations):
+    counts = {}
+    for item in observations:
+        if isinstance(item, dict):
+            month, count = item["month"], item["tickets"]
+        else:
+            month, count = item
+        counts[str(month)] = int(count)
+    return counts
+
+
 def test_forecast_requires_three_months_and_is_tenant_scoped(client, admin_token):
     import asyncio
 
     db = get_database()
     headers = {"Authorization": f"Bearer {admin_token}"}
     endpoint = "/api/advanced-insights/ticket-forecast"
-
     baseline_response = client.get(endpoint, headers=headers)
     assert baseline_response.status_code == 200
-    baseline = baseline_response.json()
-    baseline_counts = {
-        item["month"]: item["tickets"]
-        for item in baseline.get("observations", [])
-    }
+    baseline_counts = _observation_counts(baseline_response.json().get("observations", []))
 
     async def seed_forecast_tickets():
         await db.tickets.delete_many({"title": "forecast fixture"})
@@ -54,7 +60,6 @@ def test_forecast_requires_three_months_and_is_tenant_scoped(client, admin_token
                 "status": "open",
                 "category": "Network and Wi-Fi",
             })
-        # This record must not contribute to the authenticated tenant's forecast.
         await db.tickets.insert_one({
             "_id": "forecast-foreign",
             "ticket_id": "TKT-FORECAST-FIXTURE-FOREIGN",
@@ -69,15 +74,9 @@ def test_forecast_requires_three_months_and_is_tenant_scoped(client, admin_token
     assert response.status_code == 200
     payload = response.json()
     assert payload["available"] is True
-
-    observed_counts = {
-        item["month"]: item["tickets"]
-        for item in payload["observations"]
-    }
+    observed_counts = _observation_counts(payload["observations"])
     for month in ("2026-08", "2026-09", "2026-10"):
         assert observed_counts[month] - baseline_counts.get(month, 0) == 1
-
-    # The foreign tenant's November record must not appear as an increment.
     assert observed_counts.get("2026-11", 0) - baseline_counts.get("2026-11", 0) == 0
 
 
